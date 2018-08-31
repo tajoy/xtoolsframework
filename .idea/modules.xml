@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/XToolsFramework.iml" filepath="$PROJECT_DIR$/XToolsFramework.iml" />
       <module fileurl="file://$PROJECT_DIR$/accessibility/accessibility.iml" filepath="$PROJECT_DIR$/accessibility/accessibility.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/framework/framework.iml" filepath="$PROJECT_DIR$/framework/framework.iml" />
@@ -10,6 +9,7 @@
       <module fileurl="file://$PROJECT_DIR$/lua/lua.iml" filepath="$PROJECT_DIR$/lua/lua.iml" />
       <module fileurl="file://$PROJECT_DIR$/screencap/screencap.iml" filepath="$PROJECT_DIR$/screencap/screencap.iml" />
       <module fileurl="file://$PROJECT_DIR$/xposed/xposed.iml" filepath="$PROJECT_DIR$/xposed/xposed.iml" />
+      <module fileurl="file://$PROJECT_DIR$/xtoolsframework.iml" filepath="$PROJECT_DIR$/xtoolsframework.iml" />
     </modules>
   </component>
 </project>
