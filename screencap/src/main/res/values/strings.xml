@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">screencap</string>
+    <string name="grant_screencap_permission">获取屏幕捕获权限</string>
+</resources>

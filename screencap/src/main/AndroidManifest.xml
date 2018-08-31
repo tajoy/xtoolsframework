@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="x.tools.framework.api.screencap">
+
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <application>
+        <activity
+            android:name=".GrantCapturePermissionActivity"
+            android:excludeFromRecents="true"
+            android:label="@string/grant_screencap_permission"
+            android:launchMode="singleInstance"
+            android:theme="@style/ScreencapApiTransparent"  />
+    </application>
+
+</manifest>
