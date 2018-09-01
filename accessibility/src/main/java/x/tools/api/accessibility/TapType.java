@@ -2,7 +2,6 @@ package x.tools.api.accessibility;
 
 public class TapType {
 
-
     public enum TapTypeEnum {
         CLICK,
         LONG_CLICK,

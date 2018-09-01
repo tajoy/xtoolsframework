@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">XToolsFramework</string>
+    <string name="OK">OK</string>
+    <string name="API_STATUS_DESCRIPTION">Api %s[%s] status: %s</string>
+    <string name="API_NOT_INIT">Api not initialized!</string>
+    <string name="API_INIT_FAIL">Api initialize failed!</string>
+    <string name="API_NEED_PERMISSION">Api need grant permission!</string>
+    <string name="API_NOT_RUNNING">Api service or server not running!</string>
+    <string name="API_OTHER_ERROR">Api other error!</string>
+    <string name="CREATE_DIRECTORY_FAILED">create data directory failed: %s</string>
+    <string name="INIT_SCRIPT_FAILED">init script failed</string>
+    <string name="INIT_API_FAILED">api %s[%s] initialize failed!</string>
+    <string name="CONFLICT_NAMESPACE">conflict namespace with %s</string>
+    <string name="NONNULL_NULLABLE_CONFLICT_CHECK_FAIL">CANNOT use PNonNull or PNullable more then ONE: %s</string>
+    <string name="NONNULL_PRIMITIVE_CHECK_FAIL">CANNOT use PNonNull on primitive type: %s</string>
+    <string name="NULLABLE_PRIMITIVE_CHECK_FAIL">CANNOT use PNullable on primitive type: %s</string>
+    <string name="ENUM_INT_CHECK_FAIL">CANNOT use PEnumInt on %s type: %s</string>
+    <string name="FLOAT_RANGE_CHECK_FAIL" >CANNOT use PFloatRange on %s type: %s</string>
+    <string name="INT_RANGE_CHECK_FAIL" >CANNOT use PIntRange on %s type: %s</string>
+    <string name="NAME_CHECK_FAIL">Api method MUST annotated with PName</string>
+    <string name="ENUM_INIT_DOESNT_CONTAINS_IN_ENUM_CLASS" >Field %s: enum int %d doesn\'t contains in enum class %s</string>
+    <string name="INT_DOESNT_BETWEEN_IN_RANGE">Field %s: int %d doesn\'t between in range %s</string>
+    <string name="FLOAT_DOESNT_BETWEEN_IN_RANGE">Field %s: float %f doesn\'t between in range %s</string>
+    <string name="NONNULL_BUT_GOT_NULL">Field %s: object is null, but required non-null</string>
 </resources>

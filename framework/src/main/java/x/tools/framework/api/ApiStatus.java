@@ -5,4 +5,6 @@ public enum ApiStatus {
     NOT_INIT,
     INIT_FAIL,
     NEED_PERMISSION,
+    NOT_RUNNING,
+    OTHER_ERROR,
 }

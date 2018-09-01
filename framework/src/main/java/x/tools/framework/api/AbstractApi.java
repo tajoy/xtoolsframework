@@ -1,20 +1,29 @@
 package x.tools.framework.api;
 
+import android.content.ContextWrapper;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import x.tools.framework.R;
 import x.tools.framework.XContext;
 import x.tools.framework.annotation.Api;
 import x.tools.framework.annotation.ApiConstant;
 import x.tools.framework.error.XError;
 import x.tools.framework.log.Loggable;
 
-public abstract class AbstractApi implements Loggable {
+public abstract class AbstractApi extends ContextWrapper implements Loggable {
     protected XContext xContext;
     protected boolean isInitialize = false;
     protected Map<String, ApiMetaInfo> apiMetaInfoMap = null;
+
+    public AbstractApi() {
+        super(null);
+    }
 
     public String getNamespace() {
         return this.getClass().getSimpleName();
@@ -48,23 +57,27 @@ public abstract class AbstractApi implements Loggable {
     }
 
     public boolean initialize(XContext xContext) throws XError {
+        attachBaseContext(xContext);
+
         this.xContext = xContext;
+        Map<String, ApiMetaInfo> apiMetaInfoMap = new HashMap<>();
         // load api meta info
         Class<?> selfClass = getClass();
         Field[] fields = selfClass.getFields();
         for (Field field : fields) {
             ApiConstant apiConstant = field.getAnnotation(ApiConstant.class);
-            if (apiConstant != null) continue;
-            ApiMetaInfo metaInfo = new ApiMetaInfo(apiConstant.name(), field);
+            if (apiConstant == null) continue;
+            ApiMetaInfo metaInfo = new ApiMetaInfo(this.getBaseContext(), apiConstant.name(), field);
             apiMetaInfoMap.put(metaInfo.getName(), metaInfo);
         }
         Method[] methods = selfClass.getMethods();
         for (Method method : methods) {
             Api api = method.getAnnotation(Api.class);
-            if (api != null) continue;
-            ApiMetaInfo metaInfo = new ApiMetaInfo(api.name(), method);
+            if (api == null) continue;
+            ApiMetaInfo metaInfo = new ApiMetaInfo(this.getBaseContext(), api.name(), method);
             apiMetaInfoMap.put(metaInfo.getName(), metaInfo);
         }
+        this.apiMetaInfoMap = Collections.unmodifiableMap(apiMetaInfoMap);
         isInitialize = true;
         return true;
     }
@@ -74,6 +87,30 @@ public abstract class AbstractApi implements Loggable {
             return ApiStatus.NOT_INIT;
         }
         return ApiStatus.OK;
+    }
+
+    @Api(name = "checkStatus")
+    public int _checkStatus() {
+        return checkStatus().ordinal();
+    }
+
+    @Api
+    public String statusDescription() {
+        switch (checkStatus()) {
+            case OK:
+                return getString(R.string.OK);
+            case NOT_INIT:
+                return getString(R.string.API_NOT_INIT);
+            case INIT_FAIL:
+                return getString(R.string.API_INIT_FAIL);
+            case NEED_PERMISSION:
+                return getString(R.string.API_NEED_PERMISSION);
+            case NOT_RUNNING:
+                return getString(R.string.API_NOT_RUNNING);
+            default:
+            case OTHER_ERROR:
+                return getString(R.string.API_OTHER_ERROR);
+        }
     }
 
     @Api

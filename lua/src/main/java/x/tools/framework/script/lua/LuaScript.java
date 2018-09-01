@@ -3,6 +3,7 @@ package x.tools.framework.script.lua;
 
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LoadState;
+import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -25,6 +26,7 @@ import java.io.File;
 import x.tools.framework.XContext;
 import x.tools.framework.api.AbstractApi;
 import x.tools.framework.error.ParameterError;
+import x.tools.framework.error.ScriptRuntimeError;
 import x.tools.framework.error.ScriptValueConvertError;
 import x.tools.framework.error.XError;
 import x.tools.framework.script.IScriptCallback;
@@ -85,8 +87,8 @@ public class LuaScript implements IScriptEngine {
     }
 
     @Override
-    public void runScriptFile(String filename, IScriptValue... args) throws ParameterError {
-        LuaValue chunk = globals.loadfile(xContext.getPathScript(filename));
+    public void runScriptFile(String filename, IScriptValue... args) throws XError {
+        LuaValue chunk = globals.loadfile(filename);
         LuaValue[] argsObjects = new LuaValue[args.length];
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof LuaObject) {
@@ -95,7 +97,11 @@ public class LuaScript implements IScriptEngine {
                 throw new ParameterError("Only support use LuaObject as arguments");
             }
         }
-        chunk.invoke(argsObjects);
+        try {
+            chunk.invoke(argsObjects);
+        } catch (LuaError e) {
+            throw new ScriptRuntimeError(e);
+        }
     }
 
     @Override

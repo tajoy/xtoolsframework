@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import x.tools.framework.XContext;
+import x.tools.framework.XStatus;
 import x.tools.framework.api.image.ImageApi;
 import x.tools.framework.api.screencap.ScreencapApi;
 import x.tools.framework.error.XError;
@@ -53,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
             InputStream in = null;
             OutputStream out = null;
             try {
-                in = assetManager.open(filename);
+                in = assetManager.open(from + File.separator + filename);
                 File outFile = new File(to, filename);
                 out = new FileOutputStream(outFile);
                 copyFile(in, out);
@@ -79,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final int REQUEST_PERMISSION = 0x123;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,7 +89,6 @@ public class MainActivity extends AppCompatActivity {
 
 //        TextView tv = (TextView) findViewById(R.id.sample_text);
 //        tv.setText("");
-
 
         List<String> requestPermissions = new ArrayList<>();
 
@@ -105,33 +107,33 @@ public class MainActivity extends AppCompatActivity {
         }
 
         Context context = this.getApplicationContext();
-        xContext = new XContext.Builder(context)
-                .script(luaScript)
-                .api(new ScreencapApi(context))
-                .api(new ImageApi())
-                .build();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-//        UpdateManager.getInstance().onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSION) {
+        try {
+            xContext = new XContext.Builder(context)
+                    .script(luaScript)
+                    .api(new ScreencapApi(context))
+                    .api(new ImageApi())
+                    .build();
             copyAssets("script", xContext.getPathScript());
-            try {
-                xContext.initialize();
-            } catch (XError xError) {
-                xError.printStackTrace();
-            }
-            new Thread(this::startScript).start();
+            xContext.initialize();
+        } catch (XError xError) {
+            xError.printStackTrace();
+            return;
         }
+        findViewById(R.id.button).setOnClickListener(v -> {
+            XStatus status = xContext.checkStatus();
+            if (XStatus.OK.equals(status)) {
+                this.startScript();
+            } else {
+                Toast.makeText(this, xContext.statusDescreption(), Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void startScript() {
         try {
             luaScript.runScriptFile("main.lua");
-        } catch (XError xError) {
-            xError.printStackTrace();
+        } catch (XError e) {
+            e.printStackTrace();
         }
     }
 }

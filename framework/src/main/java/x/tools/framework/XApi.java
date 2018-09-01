@@ -27,38 +27,9 @@ public class XApi extends AbstractApi {
         return xContext.getPathData();
     }
 
-
-    @Api
-    public String getPathScript(
-            @PName(name = "subPath")
-            @PNonNull
-                    String subPath
-    ) {
-        return xContext.getPathScript(subPath);
-    }
-
-    @Api
-    public String getPathTemp(
-            @PName(name = "subPath")
-            @PNonNull
-                    String subPath
-    ) {
-        return xContext.getPathTemp(subPath);
-    }
-
-    @Api
-    public String getPathData(
-            @PName(name = "subPath")
-            @PNonNull
-                    String subPath
-    ) {
-        return xContext.getPathData(subPath);
-    }
-
     @Api
     public void delay(
             @PName(name = "duration")
-            @PNonNull
                     long duration
     ) {
         try {

@@ -1,4 +1,4 @@
-package x.tools.framework.api;
+package x.tools.framework.error;
 
 import x.tools.framework.error.XError;
 

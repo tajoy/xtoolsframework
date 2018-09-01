@@ -1,8 +1,10 @@
 package x.tools.framework.script.lua;
 
 import org.luaj.vm2.LuaFunction;
+import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
+import org.luaj.vm2.lib.VarArgFunction;
 
 import java.util.Locale;
 
@@ -12,7 +14,7 @@ import x.tools.framework.api.ApiStatus;
 import x.tools.framework.api.ParameterMetaInfo;
 import x.tools.framework.error.XError;
 
-public class LuaApiFunction extends LuaFunction {
+public class LuaApiFunction extends VarArgFunction {
     private LuaScript luaScript;
     private AbstractApi api;
     private ApiMetaInfo metaInfo;

@@ -45,11 +45,17 @@ public final class ScreencapApi extends AbstractApi {
     private int windowWidth;
     private int windowHeight;
     private int screenDensity;
+    private static ScreencapApi instance;
 
     private final AtomicBoolean isGrantPermission = new AtomicBoolean(false);
 
     public ScreencapApi(Context context) {
         this.context = context;
+        instance = this;
+    }
+
+    public static ScreencapApi getInstance() {
+        return instance;
     }
 
     @Override
@@ -60,13 +66,11 @@ public final class ScreencapApi extends AbstractApi {
     @Override
     public boolean initialize(XContext xContext) throws XError {
         if (!super.initialize(xContext)) return false;
-
-        this.context.startActivity(
-                new Intent(
-                        this.context,
-                        GrantCapturePermissionActivity.class
-                )
+        Intent intent = new Intent(
+                this.context,
+                GrantCapturePermissionActivity.class
         );
+        this.context.startActivity(intent);
         return true;
     }
 

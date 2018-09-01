@@ -1,6 +1,6 @@
 <resources>
 
-    <style name="ScreencapApiTransparent"  parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="ScreencapApiTransparent"  parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@color/full_transparent</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowAnimationStyle">@style/screencap_api_animation_translucent_translate</item>
