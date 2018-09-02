@@ -15,6 +15,7 @@ import x.tools.framework.annotation.PIntRange;
 import x.tools.framework.annotation.PName;
 import x.tools.framework.annotation.PNonNull;
 import x.tools.framework.annotation.PNullable;
+import x.tools.framework.annotation.PVarArgs;
 import x.tools.framework.error.AnnotationError;
 
 public class ParameterMetaInfo {
@@ -24,17 +25,20 @@ public class ParameterMetaInfo {
     private final Range<Integer> intRange;
     private final Range<Float> floatRange;
     private final Boolean isNullable;
+    private final Boolean isVarArgs;
     private final Context ctx;
 
-    public ParameterMetaInfo(Context ctx, Method method, Class<?> type, Annotation[] annotations) throws AnnotationError {
+    public ParameterMetaInfo(Context ctx, Method method, int index, Class<?> type, Annotation[] annotations) throws AnnotationError {
         this.ctx = ctx;
         String name = null;
         Class<?> enumTarget = null;
         Range<Integer> intRange = null;
         Range<Float> floatRange = null;
         Boolean isNullable = null;
+        Boolean isVarArgs = null;
         if (annotations != null && annotations.length > 0) {
-            for (Annotation annotation : annotations) {
+            for (int i = 0; i < annotations.length; i++) {
+                Annotation annotation = annotations[i];
                 if (annotation instanceof PName) {
                     name = ((PName) annotation).name();
                     continue;
@@ -104,6 +108,26 @@ public class ParameterMetaInfo {
                     }
                     continue;
                 }
+                if (annotation instanceof PVarArgs) {
+                    isVarArgs = true;
+                    if (!type.isArray()) {
+                        throw new AnnotationError(ctx.getString(
+                                R.string.VAR_ARGS_ARRAY_CHECK_FAIL,
+                                type.getName(),
+                                method.toString()
+                        ));
+                    }
+                    int pos = index + 1;
+                    if (pos != method.getParameterTypes().length) {
+                        throw new AnnotationError(ctx.getString(
+                                R.string.VAR_ARGS_LAST_ONE_CHECK_FAIL,
+                                pos,
+                                type.getName(),
+                                method.toString()
+                        ));
+                    }
+                    continue;
+                }
             }
         }
 
@@ -117,6 +141,7 @@ public class ParameterMetaInfo {
         this.intRange = intRange;
         this.floatRange = floatRange;
         this.isNullable = isNullable;
+        this.isVarArgs = isVarArgs;
     }
 
     public String getName() {
@@ -139,8 +164,12 @@ public class ParameterMetaInfo {
         return floatRange;
     }
 
-    public Boolean getNullable() {
-        return isNullable;
+    public boolean isNullable() {
+        return isNullable != null && isNullable.booleanValue();
+    }
+
+    public boolean isVarArgs() {
+        return isVarArgs != null && isVarArgs.booleanValue();
     }
 
     public void checkAnnotation(Object object) throws AnnotationError {

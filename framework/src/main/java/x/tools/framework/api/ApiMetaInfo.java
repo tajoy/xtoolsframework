@@ -43,7 +43,7 @@ public class ApiMetaInfo {
         int count = Math.min(parameterCount, annotationsCount);
         ParameterMetaInfo[] paramMetaInfo = new ParameterMetaInfo[count];
         for (int i = 0; i < count; i++) {
-            paramMetaInfo[i] = new ParameterMetaInfo(context, method, parameterTypes[i], parameterAnnotations[i]);
+            paramMetaInfo[i] = new ParameterMetaInfo(context, method, i, parameterTypes[i], parameterAnnotations[i]);
         }
         this.parameterMetaInfo = paramMetaInfo;
     }

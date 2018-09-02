@@ -28,7 +28,13 @@ public class LuaApiModule extends LuaFunction {
         for (int i = 0; i < count; i++) {
             ApiMetaInfo metaInfo = apiMetaInfo[i];
             if (metaInfo.getMethod() != null) {
-                module.set(metaInfo.getName(), new LuaApiFunction(luaScript, api, metaInfo));
+                LuaValue func = module.get(metaInfo.getName());
+                if (func.isnil() || !(func instanceof LuaApiFunction)) {
+                    func = new LuaApiFunction(luaScript, api);
+                    module.set(metaInfo.getName(), func);
+                }
+                LuaApiFunction apiFunc = (LuaApiFunction) func;
+                apiFunc.addMetaInfo(metaInfo);
             }
             Field field = metaInfo.getField();
             if (field != null) {
