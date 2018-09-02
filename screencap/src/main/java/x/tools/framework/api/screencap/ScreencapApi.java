@@ -49,12 +49,14 @@ public final class ScreencapApi extends AbstractApi {
 
     private final AtomicBoolean isGrantPermission = new AtomicBoolean(false);
 
-    public ScreencapApi(Context context) {
+    private ScreencapApi(Context context) {
         this.context = context;
-        instance = this;
     }
 
-    public static ScreencapApi getInstance() {
+    public static synchronized ScreencapApi getInstance(Context context) {
+        if (instance == null) {
+            instance = new ScreencapApi(context);
+        }
         return instance;
     }
 

@@ -29,6 +29,4 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(path: ':framework')
-
-    api 'org.luaj:luaj-jse:3.0.1'
 }

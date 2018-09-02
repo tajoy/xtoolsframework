@@ -10,12 +10,12 @@ public class GrantCapturePermissionActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_grant_capture_permission);
-        ScreencapApi.getInstance().init(this);
+        ScreencapApi.getInstance(this).init(this);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        ScreencapApi.getInstance().onActivityResult(this, requestCode, resultCode, data);
+        ScreencapApi.getInstance(this).onActivityResult(this, requestCode, resultCode, data);
         this.finish();
     }
 }

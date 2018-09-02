@@ -168,7 +168,7 @@ public class ImageApi extends AbstractApi implements Loggable {
                     int direction,
 
             @PName(name = "similarity")
-            @PFloatRange(from = 0.0f, to = 255.0f)
+            @PFloatRange(from = 0.0f, to = 1.0f)
                     float similarity
     ) {
         return nativeFindImage(source, sourceRect, target, direction, similarity);
@@ -192,7 +192,7 @@ public class ImageApi extends AbstractApi implements Loggable {
                     int direction,
 
             @PName(name = "similarity")
-            @PFloatRange(from = 0.0f, to = 255.0f)
+            @PFloatRange(from = 0.0f, to = 1.0f)
                     float similarity
     ) {
         return nativeFindColor(source, sourceRect, color, direction, similarity);
@@ -217,7 +217,7 @@ public class ImageApi extends AbstractApi implements Loggable {
                     int direction,
 
             @PName(name = "similarity")
-            @PFloatRange(from = 0.0f, to = 255.0f)
+            @PFloatRange(from = 0.0f, to = 1.0f)
                     float similarity
     ) {
         return nativeFindMultiColor(source, sourceRect, multiColor, direction, similarity);

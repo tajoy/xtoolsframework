@@ -1,10 +1,12 @@
 package x.tools.framework.script.lua;
 
+import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.TwoArgFunction;
+import org.luaj.vm2.lib.VarArgFunction;
 
 public class LuaEvent extends LuaFunction {
     LuaTable module = new LuaTable();
@@ -24,23 +26,27 @@ public class LuaEvent extends LuaFunction {
     public LuaValue add(LuaValue arg1, LuaValue arg2) {
         String name = arg1.checkjstring();
         LuaFunction func = arg2.checkfunction();
-        LuaTable list = listener_map_list.rawget(name).checktable();
-        if (list == null || list.isnil()) {
+        LuaTable list;
+        LuaValue v = listener_map_list.rawget(name);
+        if (v == null || v.isnil() || !v.istable()) {
             list = new LuaTable();
             listener_map_list.rawset(name, list);
+        } else {
+            list = v.checktable();
         }
         int count = list.length();
-        list.rawset(count, func);
+        list.rawset(count + 1, func);
         return LuaValue.TRUE;
     }
 
     public LuaValue remove(LuaValue arg1, LuaValue arg2) {
         String name = arg1.checkjstring();
         LuaFunction func = arg2.checkfunction();
-        LuaTable list = listener_map_list.rawget(name).checktable();
-        if (list == null || list.isnil()) {
+        LuaValue v = listener_map_list.rawget(name);
+        if (v == null || v.isnil() || !v.istable()) {
             return LuaValue.FALSE;
         }
+        LuaTable list = v.checktable();
         int count = list.length();
         for (int i = 1; i <= count; i++) {
             if (func.eq_b(list.rawget(i))) {
@@ -53,20 +59,22 @@ public class LuaEvent extends LuaFunction {
 
     public Varargs dispatch(LuaValue _name, Varargs varargs) {
         String name = _name.checkjstring();
-        LuaValue list = listener_map_list.rawget(name);
-        if (list == null || list.isnil()) {
-            list = new LuaTable();
-            listener_map_list.rawset(name, list);
+        LuaValue v = listener_map_list.rawget(name);
+        if (v == null || v.isnil() || !v.istable()) {
+            return LuaValue.FALSE;
         }
+        LuaTable list = v.checktable();
+        LuaTable ret = new LuaTable();
         int count = list.length();
         for (int i = 1; i <= count; i++) {
             LuaValue listener = list.get(i);
             if (listener == null || listener.isnil() || !listener.isfunction()) {
                 continue;
             }
-            listener.invoke(varargs);
+            Varargs retVal = listener.invoke(_name, varargs);
+            ret.set(i, LuaScript.varargs2LuaValue(retVal));
         }
-        return null;
+        return ret;
     }
 
     public class add extends TwoArgFunction {
@@ -83,15 +91,20 @@ public class LuaEvent extends LuaFunction {
         }
     }
 
-    public class dispatch extends LuaFunction {
+    public class dispatch extends VarArgFunction {
         @Override
         public Varargs invoke(Varargs varargs) {
             int nArg = varargs.narg();
             if (nArg < 1) {
-                LuaValue.argerror(1, "expect string");
+                LuaValue.argerror(1, "expect at least 1 string");
                 return NIL;
             }
-            return LuaEvent.this.dispatch(varargs.checkstring(1), varargs.subargs(2));
+            switch (nArg) {
+                case 1:
+                    return LuaEvent.this.dispatch(varargs.checkstring(1), NIL);
+                default:
+                    return LuaEvent.this.dispatch(varargs.checkstring(1), varargs.subargs(2));
+            }
         }
     }
 }

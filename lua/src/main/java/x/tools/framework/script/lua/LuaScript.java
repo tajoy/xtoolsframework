@@ -117,7 +117,7 @@ public class LuaScript implements IScriptEngine {
     @Override
     public IScriptValue dispatchEvent(String name, IScriptValue... args) throws XError {
         LuaValue[] luaValues = new LuaValue[args.length];
-        for (int i = 1; i < args.length; i++) {
+        for (int i = 0; i < args.length; i++) {
             IScriptValue arg = args[i];
             if (arg instanceof LuaObject) {
                 luaValues[i] = ((LuaObject) arg).getLuaValue();
@@ -148,6 +148,23 @@ public class LuaScript implements IScriptEngine {
 
     public LuaValue createLuaValue(Object value) throws ScriptValueConvertError {
         return CoerceJavaToLua.coerce(value);
+    }
+
+    public static LuaValue varargs2LuaValue(Varargs varargs) {
+        if (varargs == null)
+            return LuaValue.NIL;
+        int count = varargs.narg();
+        switch (count) {
+            case 0: return LuaValue.NIL;
+            case 1: return varargs.arg1();
+            default: {
+                LuaTable list = new LuaTable();
+                for (int i = 1; i < count; i++) {
+                    list.set(i, varargs.arg(i));
+                }
+                return list;
+            }
+        }
     }
 
     @Override

@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import x.tools.framework.XContext;
@@ -23,9 +24,10 @@ import x.tools.framework.XStatus;
 import x.tools.framework.api.image.ImageApi;
 import x.tools.framework.api.screencap.ScreencapApi;
 import x.tools.framework.error.XError;
+import x.tools.framework.log.Loggable;
 import x.tools.framework.script.lua.LuaScript;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements Loggable {
     private XContext xContext;
     private final LuaScript luaScript = new LuaScript();
 
@@ -110,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             xContext = new XContext.Builder(context)
                     .script(luaScript)
-                    .api(new ScreencapApi(context))
+                    .api(ScreencapApi.getInstance(context))
                     .api(new ImageApi())
                     .build();
             copyAssets("script", xContext.getPathScript());
@@ -119,6 +121,7 @@ public class MainActivity extends AppCompatActivity {
             xError.printStackTrace();
             return;
         }
+        luaScript.addEventListener("ping", this::onEvent);
         findViewById(R.id.button).setOnClickListener(v -> {
             XStatus status = xContext.checkStatus();
             if (XStatus.OK.equals(status)) {
@@ -135,5 +138,11 @@ public class MainActivity extends AppCompatActivity {
         } catch (XError e) {
             e.printStackTrace();
         }
+    }
+
+    public Object onEvent(String name, Object ...args) throws XError {
+        info("%s -> %s", name, Arrays.toString(args));
+        luaScript.dispatchEvent("pong", luaScript.createValue("1"), luaScript.createValue("2"), luaScript.createValue("3"));
+        return "ok";
     }
 }
