@@ -10,6 +10,7 @@
     <string name="CREATE_DIRECTORY_FAILED">create data directory failed: %s</string>
     <string name="INIT_SCRIPT_FAILED">init script failed</string>
     <string name="INIT_API_FAILED">api %s[%s] initialize failed!</string>
+    <string name="INIT_API_DEPENDENCE_FAILED">api %s[%s] dependence(s) %s failed!</string>
     <string name="CONFLICT_NAMESPACE">conflict namespace with %s</string>
     <string name="NONNULL_NULLABLE_CONFLICT_CHECK_FAIL">CANNOT use PNonNull or PNullable more then ONE: %s</string>
     <string name="NONNULL_PRIMITIVE_CHECK_FAIL">CANNOT use PNonNull on primitive type: %s</string>

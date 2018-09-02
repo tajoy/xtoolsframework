@@ -9,8 +9,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import x.tools.framework.api.AbstractApi;
@@ -168,13 +171,24 @@ public final class XContext extends ContextWrapper implements Loggable {
             initError = getString(R.string.INIT_SCRIPT_FAILED);
             this.script.init(this);
         }
-        for (AbstractApi api : this.apiMap.values()) {
+        List<AbstractApi> allApi = new ArrayList<>(this.apiMap.values());
+        for (AbstractApi api : allApi) {
             initError = getString(
                     R.string.INIT_API_FAILED,
                     api.getClass(),
                     api.getNamespace()
             );
             if (!api.initialize(this)) {
+                throw new InitializeError(initError);
+            }
+            String[] failedDependence = api.checkDependence(allApi);
+            if (failedDependence != null) {
+                initError = getString(
+                        R.string.INIT_API_DEPENDENCE_FAILED,
+                        api.getClass(),
+                        api.getNamespace(),
+                        Arrays.toString(failedDependence)
+                );
                 throw new InitializeError(initError);
             }
             if (this.script != null) {

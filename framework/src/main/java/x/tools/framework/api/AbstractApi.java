@@ -4,6 +4,7 @@ import android.content.ContextWrapper;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -33,27 +34,29 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
         return null;
     }
 
-    public boolean checkDependence(List<Class<? extends AbstractApi>> allApi) {
+    public final String[] checkDependence(List<AbstractApi> allApi) {
         String[] dependenceApis = getDependenceApis();
         if (dependenceApis == null || dependenceApis.length <= 0) {
-            return true;
+            return null;
         }
         if (allApi == null || allApi.size() <= 0) {
-            return false;
+            return dependenceApis;
         }
+        List<String> listApis = new ArrayList<>();
         for (String dependenceApi : dependenceApis) {
             boolean isMatchDep = false;
-            for (Class<? extends AbstractApi> cls : allApi) {
-                if (cls.getName().equals(dependenceApi)) {
+            for (AbstractApi api : allApi) {
+                if (api.getClass().getName().equals(dependenceApi)) {
                     isMatchDep = true;
                     break;
                 }
             }
             if (!isMatchDep) {
-                return false;
+                listApis.add(dependenceApi);
             }
         }
-        return true;
+        if (listApis.size() <= 0) return null;
+        return listApis.toArray(new String[listApis.size()]);
     }
 
     public boolean initialize(XContext xContext) throws XError {
