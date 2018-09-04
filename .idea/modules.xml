@@ -7,7 +7,9 @@
       <module fileurl="file://$PROJECT_DIR$/framework/framework.iml" filepath="$PROJECT_DIR$/framework/framework.iml" />
       <module fileurl="file://$PROJECT_DIR$/image/image.iml" filepath="$PROJECT_DIR$/image/image.iml" />
       <module fileurl="file://$PROJECT_DIR$/ime/ime.iml" filepath="$PROJECT_DIR$/ime/ime.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ime/ime.iml" filepath="$PROJECT_DIR$/ime/ime.iml" />
       <module fileurl="file://$PROJECT_DIR$/lua/lua.iml" filepath="$PROJECT_DIR$/lua/lua.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ocr/ocr.iml" filepath="$PROJECT_DIR$/ocr/ocr.iml" />
       <module fileurl="file://$PROJECT_DIR$/ocr/ocr.iml" filepath="$PROJECT_DIR$/ocr/ocr.iml" />
       <module fileurl="file://$PROJECT_DIR$/screencap/screencap.iml" filepath="$PROJECT_DIR$/screencap/screencap.iml" />
       <module fileurl="file://$PROJECT_DIR$/xposed/xposed.iml" filepath="$PROJECT_DIR$/xposed/xposed.iml" />
