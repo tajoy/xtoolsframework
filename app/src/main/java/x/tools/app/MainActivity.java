@@ -37,51 +37,6 @@ public class MainActivity extends AppCompatActivity implements Loggable {
 
     };
 
-    private void copyFile(InputStream in, OutputStream out) throws IOException {
-        byte[] buffer = new byte[1024];
-        int read;
-        while ((read = in.read(buffer)) != -1) {
-            out.write(buffer, 0, read);
-        }
-    }
-
-    private void copyAssets(String from, String to) {
-        AssetManager assetManager = getAssets();
-        String[] files = null;
-        try {
-            files = assetManager.list(from);
-        } catch (IOException e) {
-            Log.e("tag", "Failed to get asset file list.", e);
-        }
-        if (files != null) for (String filename : files) {
-            InputStream in = null;
-            OutputStream out = null;
-            try {
-                in = assetManager.open(from + File.separator + filename);
-                File outFile = new File(to, filename);
-                out = new FileOutputStream(outFile);
-                copyFile(in, out);
-            } catch (IOException e) {
-                Log.e("tag", "Failed to copy asset file: " + filename, e);
-            } finally {
-                if (in != null) {
-                    try {
-                        in.close();
-                    } catch (IOException e) {
-                        // NOOP
-                    }
-                }
-                if (out != null) {
-                    try {
-                        out.close();
-                    } catch (IOException e) {
-                        // NOOP
-                    }
-                }
-            }
-        }
-    }
-
     private static final int REQUEST_PERMISSION = 0x123;
 
     @Override
@@ -115,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements Loggable {
                     .api(ScreencapApi.getInstance(context))
                     .api(new ImageApi())
                     .build();
-            copyAssets("script", xContext.getPathScript());
+            xContext.copyAssetsToScriptDir("script");
             xContext.initialize();
         } catch (XError xError) {
             xError.printStackTrace();
@@ -127,7 +82,7 @@ public class MainActivity extends AppCompatActivity implements Loggable {
             if (XStatus.OK.equals(status)) {
                 this.startScript();
             } else {
-                Toast.makeText(this, xContext.statusDescreption(), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, xContext.statusDescription(), Toast.LENGTH_LONG).show();
             }
         });
     }

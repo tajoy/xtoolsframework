@@ -2,13 +2,15 @@ package x.tools.framework;
 
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.res.AssetManager;
 
 import org.apache.commons.lang3.ClassUtils;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -18,8 +20,8 @@ import java.util.Map;
 
 import x.tools.framework.api.AbstractApi;
 import x.tools.framework.api.ApiStatus;
-import x.tools.framework.error.InitializeError;
 import x.tools.framework.error.BuilderError;
+import x.tools.framework.error.InitializeError;
 import x.tools.framework.error.XError;
 import x.tools.framework.log.DefaultLoggerFactory;
 import x.tools.framework.log.ILoggerFactory;
@@ -54,7 +56,7 @@ public final class XContext extends ContextWrapper implements Loggable {
             File rootDir = context.getFilesDir();
             this.pathScript = new File(rootDir, "xScript").getAbsolutePath();
             this.pathData = new File(rootDir, "xData").getAbsolutePath();
-            this.pathTemp =  new File(context.getCacheDir(), "xTemp").getAbsolutePath();
+            this.pathTemp = new File(context.getCacheDir(), "xTemp").getAbsolutePath();
 //            this.scriptLooperName = "Script-Looper";
 
             // default api
@@ -203,15 +205,15 @@ public final class XContext extends ContextWrapper implements Loggable {
 //    }
 
     public String getPathScript() {
-        return pathScript;
+        return new File(pathScript).getAbsolutePath();
     }
 
     public String getPathTemp() {
-        return pathTemp;
+        return new File(pathTemp).getAbsolutePath();
     }
 
     public String getPathData() {
-        return pathData;
+        return new File(pathData).getAbsolutePath();
     }
 
     public String getPathScript(String subPath) {
@@ -279,7 +281,7 @@ public final class XContext extends ContextWrapper implements Loggable {
         return XStatus.OK;
     }
 
-    public String statusDescreption() {
+    public String statusDescription() {
         if (XStatus.OK.equals(checkStatus())) {
             return getString(R.string.OK);
         }
@@ -305,4 +307,61 @@ public final class XContext extends ContextWrapper implements Loggable {
     }
 
 
+    private void copyFile(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[1024];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
+        }
+    }
+
+    private boolean copyAssets(String from, String to) throws IOException {
+        AssetManager assetManager = getAssets();
+        String[] files = null;
+        files = assetManager.list(from);
+        if (files == null || files.length <= 0) {
+            return false;
+        }
+        for (String filename : files) {
+            String fullPath = from + File.separator + filename;
+            String fullToPath = to + File.separator + filename;
+            if (copyAssets(fullPath, fullToPath)) {
+                continue;
+            }
+            InputStream in = null;
+            OutputStream out = null;
+            try {
+                in = assetManager.open(fullPath);
+                File outFile = new File(to, filename);
+                out = new FileOutputStream(outFile);
+                copyFile(in, out);
+            } catch (IOException e) {
+                throw e;
+            } finally {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (IOException e) {
+                        // NOOP
+                    }
+                }
+                if (out != null) {
+                    try {
+                        out.close();
+                    } catch (IOException e) {
+                        // NOOP
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean copyAssetsToDataDir(String path) throws IOException {
+        return copyAssets(path, getPathData());
+    }
+
+    public boolean copyAssetsToScriptDir(String path) throws IOException {
+        return copyAssets(path, getPathScript());
+    }
 }

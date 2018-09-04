@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="x.tools.api.ime" >
+
+    <application>
+        <service
+            android:name=".MockIMService"
+            android:label="@string/im_name"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:process=":im_service" >
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+                <action android:name="com.bank.tools.service.SuperIMService.COMMIT_TEXT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/im" />
+        </service>
+    </application>
+
+</manifest>
