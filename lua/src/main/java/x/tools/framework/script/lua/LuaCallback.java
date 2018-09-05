@@ -12,7 +12,7 @@ import x.tools.framework.error.ScriptValueConvertError;
 import x.tools.framework.script.IScriptCallback;
 import x.tools.framework.script.IScriptValue;
 
-public class LuaCallback extends VarArgFunction {
+public class LuaCallback extends VarArgFunction implements IScriptCallback {
     private final IScriptCallback callback;
 
     public LuaCallback(IScriptCallback callback) {
@@ -64,4 +64,8 @@ public class LuaCallback extends VarArgFunction {
         return this.equals(val) ? LuaValue.TRUE : LuaValue.FALSE;
     }
 
+    @Override
+    public Object call(String name, Object... args) throws Throwable {
+        return this.callback.call(name, args);
+    }
 }
