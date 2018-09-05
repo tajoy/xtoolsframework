@@ -15,14 +15,10 @@ import org.luaj.vm2.lib.StringLib;
 import org.luaj.vm2.lib.TableLib;
 import org.luaj.vm2.lib.jse.CoerceJavaToLua;
 import org.luaj.vm2.lib.jse.CoerceLuaToJava;
-import org.luaj.vm2.lib.jse.JseBaseLib;
 import org.luaj.vm2.lib.jse.JseIoLib;
 import org.luaj.vm2.lib.jse.JseMathLib;
 import org.luaj.vm2.lib.jse.JseOsLib;
-import org.luaj.vm2.lib.jse.JsePlatform;
 import org.luaj.vm2.lib.jse.LuajavaLib;
-
-import java.io.File;
 
 import x.tools.framework.XContext;
 import x.tools.framework.api.AbstractApi;
@@ -74,8 +70,13 @@ public class LuaScript implements IScriptEngine {
     }
 
     @Override
-    public void runScript(String name, String script, IScriptValue... args) throws ParameterError {
-        LuaValue chunk = globals.load(script, name);
+    public void runScript(String name, String script, IScriptValue... args) throws XError {
+        LuaValue chunk;
+        try {
+            chunk = globals.load(script);
+        } catch (LuaError e) {
+            throw new ScriptRuntimeError(e);
+        }
         LuaValue[] argsObjects = new LuaValue[args.length];
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof LuaObject) {
@@ -84,12 +85,21 @@ public class LuaScript implements IScriptEngine {
                 throw new ParameterError("Only support use LuaObject as arguments");
             }
         }
-        chunk.invoke(argsObjects);
+        try {
+            chunk.invoke(argsObjects);
+        } catch (LuaError e) {
+            throw new ScriptRuntimeError(e);
+        }
     }
 
     @Override
     public void runScriptFile(String filename, IScriptValue... args) throws XError {
-        LuaValue chunk = globals.loadfile(filename);
+        LuaValue chunk;
+        try {
+            chunk = globals.loadfile(filename);
+        } catch (LuaError e) {
+            throw new ScriptRuntimeError(e);
+        }
         LuaValue[] argsObjects = new LuaValue[args.length];
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof LuaObject) {
@@ -173,8 +183,10 @@ public class LuaScript implements IScriptEngine {
             return LuaValue.NIL;
         int count = varargs.narg();
         switch (count) {
-            case 0: return LuaValue.NIL;
-            case 1: return varargs.arg1();
+            case 0:
+                return LuaValue.NIL;
+            case 1:
+                return varargs.arg1();
             default: {
                 LuaTable list = new LuaTable();
                 for (int i = 1; i < count; i++) {
