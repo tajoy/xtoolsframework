@@ -1,11 +1,10 @@
 package x.tools.framework.event;
 
+import android.net.LocalSocket;
+import android.net.LocalSocketAddress;
 import android.text.TextUtils;
 
 import java.io.IOException;
-import java.net.Socket;
-import java.util.Collections;
-import java.util.EventListener;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
@@ -21,20 +20,33 @@ public class EventBusClient implements EventBus {
             )
     );
     private final String uuid;
-    private final Socket socket;
+    private LocalSocket socket;
     private EventReader eventReader;
     private EventWriter eventWriter;
-    private Thread threadReceive;
+    private LocalSocketAddress address;
+    private Thread connecting;
+    private Thread receiving;
+    private Thread sending;
 
-    EventBusClient(Socket socket) throws IOException {
+    EventBusClient(String address) throws IOException {
         this.uuid = UUID.randomUUID().toString();
-        this.socket = socket;
-        this.eventReader = new EventReader(socket.getInputStream());
-        this.eventWriter = new EventWriter(socket.getOutputStream());
-        this.threadReceive = new Thread(this::receiveEvent);
-        this.threadReceive.setName(this.toString() + "-thread");
-        this.threadReceive.setDaemon(true);
-        this.threadReceive.start();
+        this.address = new LocalSocketAddress(address);
+        this.eventReader = new EventReader();
+        this.eventWriter = new EventWriter();
+        this.connecting = new Thread(this::runConnecting);
+        this.connecting.setName("receiving-thread -" + this.toString());
+        this.connecting.setDaemon(true);
+        this.connecting.start();
+
+        this.receiving = new Thread(this::runReceiving);
+        this.receiving.setName("receiving-thread -" + this.toString());
+        this.receiving.setDaemon(true);
+        this.receiving.start();
+
+        this.receiving = new Thread(this::runReceiving);
+        this.receiving.setName("receiving-thread -" + this.toString());
+        this.receiving.setDaemon(true);
+        this.receiving.start();
     }
 
     public String getId() {
@@ -48,9 +60,12 @@ public class EventBusClient implements EventBus {
 
     @Override
     public void trigger(String name, Object data) {
-        if (TextUtils.isEmpty(name))
-            throw new IllegalArgumentException("event is empty");
-        Event event = new Event(getId(), name, data);
+        Event event = new Event(
+                name,
+                getId(),
+                data.getClass().toString(),
+                GlobalEventBus.toJson(data)
+        );
         sendLocal(event);
         sendRemote(event);
     }
@@ -77,12 +92,6 @@ public class EventBusClient implements EventBus {
     }
 
     void sendRemote(Event event) {
-        if (this.socket.isClosed())
-            return;
-
-        if (this.socket.isOutputShutdown())
-            return;
-
         try {
             this.eventWriter.writeEvent(event);
         } catch (IOException e) {
@@ -90,14 +99,38 @@ public class EventBusClient implements EventBus {
         }
     }
 
-    void receiveEvent() {
-        try {
-            while (!this.socket.isClosed() && !this.socket.isInputShutdown()) {
-                Event event = this.eventReader.readEvent();
+    void runConnecting() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                this.socket = new LocalSocket();
+                this.socket.connect(this.address);
+                this.eventWriter.setOutputStream(this.socket.getOutputStream());
+                this.eventReader.setInputStream(this.socket.getInputStream());
+            } catch (IOException ignore) {
+                try {
+                    Thread.sleep(1000);
+                    continue;
+                } catch (InterruptedException ignore1) {
+                    break;
+                }
+            }
+            break;
+        }
+        this.connecting = null;
+    }
+
+    void runSending() {
+        while (!Thread.currentThread().isInterrupted()) {
+            
+        }
+    }
+
+    void runReceiving() {
+        while (!Thread.currentThread().isInterrupted()) {
+            Event event = this.eventReader.readEvent();
+            if (event != null) {
                 sendLocal(event);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
