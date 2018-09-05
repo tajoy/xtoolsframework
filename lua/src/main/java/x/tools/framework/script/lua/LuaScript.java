@@ -146,9 +146,120 @@ public class LuaScript implements IScriptEngine {
         return new LuaObject(ret);
     }
 
-    public LuaValue createLuaValue(Object value) throws ScriptValueConvertError {
+
+    public static LuaValue createLuaValue(Object value) throws ScriptValueConvertError {
         return CoerceJavaToLua.coerce(value);
     }
+
+    public static LuaValue[] createLuaValues(Object[] values) throws ScriptValueConvertError {
+        LuaValue[] ret = new LuaValue[values.length];
+        for (int i = 0; i < values.length; i++) {
+            ret[i] = CoerceJavaToLua.coerce(values[i]);
+        }
+        return ret;
+    }
+
+    public static Object convertTo(LuaValue luaValue) throws ScriptValueConvertError {
+        int type = luaValue.type();
+        switch (type) {
+            case LuaValue.TNONE: {
+                return null;
+            }
+            case LuaValue.TNIL: {
+                return null;
+            }
+            case LuaValue.TBOOLEAN: {
+                return luaValue.toboolean();
+            }
+            case LuaValue.TNUMBER: {
+                return luaValue.todouble();
+            }
+            case LuaValue.TSTRING: {
+                return luaValue.tojstring();
+            }
+            case LuaValue.TTABLE: {
+                // TODO: convert to lazy map
+            }
+            case LuaValue.TFUNCTION: {
+                // TODO: convert to IScriptCallback
+            }
+            case LuaValue.TUSERDATA:
+            case LuaValue.TLIGHTUSERDATA: {
+                return luaValue.touserdata();
+            }
+            case LuaValue.TTHREAD: {
+                // TODO: convert to Thread ?
+            }
+        }
+        throw new ScriptValueConvertError();
+    }
+
+    private static boolean isInEquals(Object obj, Object... args) {
+        if (obj == null) return false;
+        if (args == null || args.length <= 0) return false;
+        for (Object arg : args) {
+            if (obj.equals(arg))
+                return true;
+        }
+        return false;
+    }
+
+    public static <T> T convertTo(LuaValue luaValue, Class<T> cls) throws ScriptValueConvertError {
+        int type = luaValue.type();
+        switch (type) {
+            case LuaValue.TNONE: {
+                return null;
+            }
+            case LuaValue.TNIL: {
+                return null;
+            }
+            case LuaValue.TBOOLEAN: {
+                if (isInEquals(cls, boolean.class)) {
+                    return (T) (Boolean) luaValue.toboolean();
+                }
+                break;
+            }
+            case LuaValue.TNUMBER: {
+                if (isInEquals(cls, byte.class, Byte.class)) {
+                    return (T) (Byte) luaValue.tobyte();
+                }
+                if (isInEquals(cls, short.class, Short.class)) {
+                    return (T) (Short) luaValue.toshort();
+                }
+                if (isInEquals(cls, int.class, Integer.class)) {
+                    return (T) (Integer) luaValue.toint();
+                }
+                if (isInEquals(cls, long.class, Long.class)) {
+                    return (T) (Long) luaValue.tolong();
+                }
+                if (isInEquals(cls, float.class, Float.class)) {
+                    return (T) (Float) luaValue.tofloat();
+                }
+                if (isInEquals(cls, double.class, Double.class)) {
+                    return (T) (Double) luaValue.todouble();
+                }
+                break;
+            }
+            case LuaValue.TSTRING: {
+                return (T) luaValue.tojstring();
+            }
+            case LuaValue.TTABLE: {
+                // TODO: convert to lazy map
+            }
+            case LuaValue.TFUNCTION: {
+                // TODO: convert to IScriptCallback
+            }
+            case LuaValue.TUSERDATA:
+            case LuaValue.TLIGHTUSERDATA: {
+                return (T) luaValue.touserdata(cls);
+            }
+            case LuaValue.TTHREAD: {
+                // TODO: convert to Thread ?
+            }
+        }
+        throw new ScriptValueConvertError();
+    }
+
 
     public static LuaValue varargs2LuaValue(Varargs varargs) {
         if (varargs == null)
