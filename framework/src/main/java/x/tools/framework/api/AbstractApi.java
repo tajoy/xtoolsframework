@@ -101,18 +101,18 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
     public String statusDescription() {
         switch (checkStatus()) {
             case OK:
-                return getString(R.string.OK);
+                return getString(R.string.X_TOOLS_OK);
             case NOT_INIT:
-                return getString(R.string.API_NOT_INIT);
+                return getString(R.string.X_TOOLS_API_NOT_INIT);
             case INIT_FAIL:
-                return getString(R.string.API_INIT_FAIL);
+                return getString(R.string.X_TOOLS_API_INIT_FAIL);
             case NEED_PERMISSION:
-                return getString(R.string.API_NEED_PERMISSION);
+                return getString(R.string.X_TOOLS_API_NEED_PERMISSION);
             case NOT_RUNNING:
-                return getString(R.string.API_NOT_RUNNING);
+                return getString(R.string.X_TOOLS_API_NOT_RUNNING);
             default:
             case OTHER_ERROR:
-                return getString(R.string.API_OTHER_ERROR);
+                return getString(R.string.X_TOOLS_API_OTHER_ERROR);
         }
     }
 

@@ -2,6 +2,9 @@ package x.tools.framework;
 
 import android.telecom.Call;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -37,6 +40,29 @@ public final class XUtils {
             }
             return value;
         }
+    }
+
+    public static String getProcessName(int pid) {
+        String processName;
+        String pidStr = String.valueOf(pid);
+        try {
+            File file = new File("/proc/" + pidStr + "/cmdline");
+            BufferedReader mBufferedReader = new BufferedReader(new FileReader(file));
+            processName = mBufferedReader.readLine().trim();
+            mBufferedReader.close();
+            return processName;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String processName = null;
+    public static String getProcessName() {
+        if (processName == null) {
+            int pid = android.os.Process.myPid();
+            processName = getProcessName(pid);
+        }
+        return processName;
     }
 
 }

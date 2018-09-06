@@ -5,4 +5,9 @@ public enum XStatus {
     INIT_FAIL,
     API_NOT_OK,
     ;
+
+
+    public boolean isOk() {
+        return this.equals(OK);
+    }
 }

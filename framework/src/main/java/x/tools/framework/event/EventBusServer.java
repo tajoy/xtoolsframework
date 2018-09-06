@@ -3,13 +3,16 @@ package x.tools.framework.event;
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 
+import static x.tools.framework.XUtils.getProcessName;
 
-public class EventBusServer {
+
+public class EventBusServer implements Closeable {
     private LocalServerSocket serverSocket;
     private Thread acceptor;
     private final Set<ClientHandler> sockets =
@@ -19,8 +22,8 @@ public class EventBusServer {
                     )
             );
 
-    EventBusServer(String name) throws IOException {
-        this.serverSocket = new LocalServerSocket(name);
+    EventBusServer(String address) throws IOException {
+        this.serverSocket = new LocalServerSocket(address);
         this.acceptor = new Thread(this::accepting);
         this.acceptor.setName(
                 "EventBusServer["
@@ -50,17 +53,14 @@ public class EventBusServer {
                 }
             }
         }
+        this.sockets.clear();
     }
 
     private void dispatchAll(Event event, ClientHandler excludedHandler) throws IOException {
         synchronized (this.sockets) {
             for (ClientHandler handler : this.sockets) {
-                try {
-                    if (!handler.equals(excludedHandler)) {
-                        handler.dispatchEvent(event);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (!handler.equals(excludedHandler)) {
+                    handler.dispatchEvent(event);
                 }
             }
         }
@@ -75,8 +75,10 @@ public class EventBusServer {
             this.socket = socket;
             this.eventReader = new EventReader();
             this.eventWriter = new EventWriter();
+            this.eventReader.setInputStream(socket.getInputStream());
+            this.eventWriter.setOutputStream(socket.getOutputStream());
             this.setName("ClientHandler["
-                    + socket.getRemoteSocketAddress().getName()
+                    + getProcessName(socket.getPeerCredentials().getPid())
                     + "]"
             );
             this.setDaemon(true);
@@ -85,7 +87,7 @@ public class EventBusServer {
 
         @Override
         public void run() {
-            while (!isInterrupted() && !this.socket.isClosed()) {
+            while (!isInterrupted()) {
                 try {
                     Event event = this.eventReader.readEvent();
                     EventBusServer.this.dispatchAll(event, this);
@@ -101,10 +103,14 @@ public class EventBusServer {
             this.interrupt();
         }
 
-        private void dispatchEvent(Event event) throws IOException {
+        private void dispatchEvent(Event event) {
             this.eventWriter.writeEvent(event);
         }
     }
 
 
+    @Override
+    public void close() throws IOException {
+        this.acceptor.interrupt();
+    }
 }

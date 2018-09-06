@@ -46,13 +46,13 @@ public class ParameterMetaInfo {
                 if (annotation instanceof PNonNull) {
                     if (isNullable != null) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.NONNULL_NULLABLE_CONFLICT_CHECK_FAIL,
+                                R.string.X_TOOLS_NONNULL_NULLABLE_CONFLICT_CHECK_FAIL,
                                 method.toString()
                         ));
                     }
                     if (type.isPrimitive()) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.NONNULL_PRIMITIVE_CHECK_FAIL,
+                                R.string.X_TOOLS_NONNULL_PRIMITIVE_CHECK_FAIL,
                                 method.toString()
                         ));
                     }
@@ -62,13 +62,13 @@ public class ParameterMetaInfo {
                 if (annotation instanceof PNullable) {
                     if (isNullable != null) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.NONNULL_NULLABLE_CONFLICT_CHECK_FAIL,
+                                R.string.X_TOOLS_NONNULL_NULLABLE_CONFLICT_CHECK_FAIL,
                                 method.toString()
                         ));
                     }
                     if (type.isPrimitive()) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.NULLABLE_PRIMITIVE_CHECK_FAIL,
+                                R.string.X_TOOLS_NULLABLE_PRIMITIVE_CHECK_FAIL,
                                 method.toString()
                         ));
                     }
@@ -79,7 +79,7 @@ public class ParameterMetaInfo {
                     enumTarget = ((PEnumInt) annotation).target();
                     if (!ClassUtils.isAssignable(type, Integer.class)) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.ENUM_INT_CHECK_FAIL,
+                                R.string.X_TOOLS_ENUM_INT_CHECK_FAIL,
                                 type.getName(),
                                 method.toString()
                         ));
@@ -90,7 +90,7 @@ public class ParameterMetaInfo {
                     floatRange = new Range<>(((PFloatRange) annotation).from(), ((PFloatRange) annotation).to());
                     if (!ClassUtils.isAssignable(type, Float.class)) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.FLOAT_RANGE_CHECK_FAIL,
+                                R.string.X_TOOLS_FLOAT_RANGE_CHECK_FAIL,
                                 type.getName(),
                                 method.toString()
                         ));
@@ -101,7 +101,7 @@ public class ParameterMetaInfo {
                     intRange = new Range<>(((PIntRange) annotation).from(), ((PIntRange) annotation).to());
                     if (!ClassUtils.isAssignable(type, Integer.class)) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.INT_RANGE_CHECK_FAIL,
+                                R.string.X_TOOLS_INT_RANGE_CHECK_FAIL,
                                 type.getName(),
                                 method.toString()
                         ));
@@ -112,7 +112,7 @@ public class ParameterMetaInfo {
                     isVarArgs = true;
                     if (!type.isArray()) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.VAR_ARGS_ARRAY_CHECK_FAIL,
+                                R.string.X_TOOLS_VAR_ARGS_ARRAY_CHECK_FAIL,
                                 type.getName(),
                                 method.toString()
                         ));
@@ -120,7 +120,7 @@ public class ParameterMetaInfo {
                     int pos = index + 1;
                     if (pos != method.getParameterTypes().length) {
                         throw new AnnotationError(ctx.getString(
-                                R.string.VAR_ARGS_LAST_ONE_CHECK_FAIL,
+                                R.string.X_TOOLS_VAR_ARGS_LAST_ONE_CHECK_FAIL,
                                 pos,
                                 type.getName(),
                                 method.toString()
@@ -132,7 +132,7 @@ public class ParameterMetaInfo {
         }
 
         if (name == null) {
-            throw new AnnotationError(ctx.getString(R.string.NAME_CHECK_FAIL));
+            throw new AnnotationError(ctx.getString(R.string.X_TOOLS_NAME_CHECK_FAIL));
         }
 
         this.name = name;
@@ -187,7 +187,7 @@ public class ParameterMetaInfo {
                 }
                 if (!isIn)
                     throw new AnnotationError(ctx.getString(
-                            R.string.ENUM_INIT_DOESNT_CONTAINS_IN_ENUM_CLASS,
+                            R.string.X_TOOLS_ENUM_INIT_DOESNT_CONTAINS_IN_ENUM_CLASS,
                             name,
                             value,
                             enumTarget.getName()
@@ -197,7 +197,7 @@ public class ParameterMetaInfo {
                 int value = (Integer) object;
                 if (!intRange.contains(value)) {
                     throw new AnnotationError(ctx.getString(
-                            R.string.INT_DOESNT_BETWEEN_IN_RANGE,
+                            R.string.X_TOOLS_INT_DOESNT_BETWEEN_IN_RANGE,
                             name,
                             value,
                             intRange.toString()
@@ -208,7 +208,7 @@ public class ParameterMetaInfo {
                 float value = (Float) object;
                 if (!floatRange.contains(value)) {
                     throw new AnnotationError(ctx.getString(
-                            R.string.INT_DOESNT_BETWEEN_IN_RANGE,
+                            R.string.X_TOOLS_INT_DOESNT_BETWEEN_IN_RANGE,
                             name,
                             value,
                             floatRange.toString()
@@ -217,7 +217,7 @@ public class ParameterMetaInfo {
             }
             if (isNullable != null) {
                 if (!isNullable && object == null) {
-                    throw new AnnotationError(ctx.getString(R.string.NONNULL_BUT_GOT_NULL, name));
+                    throw new AnnotationError(ctx.getString(R.string.X_TOOLS_NONNULL_BUT_GOT_NULL, name));
                 }
             }
         } catch (AnnotationError e) {

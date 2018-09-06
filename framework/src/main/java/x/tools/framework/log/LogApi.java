@@ -9,7 +9,7 @@ import x.tools.framework.annotation.PNonNull;
 import x.tools.framework.api.AbstractApi;
 
 public class LogApi extends AbstractApi {
-    private final ILogger logger = XContext.getLoggerFactory().getLogger("script.lua.api");
+    private final ILogger logger = XContext.getLoggerFactory().getLogger("script.api");
 
     @Override
     public String getNamespace() {

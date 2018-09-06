@@ -55,7 +55,7 @@ public class Event implements java.io.Serializable {
         return !this.name.startsWith("eventbus.");
     }
 
-    public boolean isAll() {
+    public boolean isDefault() {
         return "*".equals(this.name);
     }
 
@@ -108,6 +108,8 @@ public class Event implements java.io.Serializable {
     }
 
     public Object getData(ClassLoader classLoader) {
+        if (getTypeName() == null)
+            return null;
         try {
             return GlobalEventBus.fromJson(getPreload(), classLoader.loadClass(getTypeName()));
         } catch (ClassNotFoundException e) {
@@ -119,7 +121,7 @@ public class Event implements java.io.Serializable {
         if (getPreload() == null) {
             return null;
         }
-        if (getTypeName() != null && !getTypeName().equals(type.getName())) {
+        if (!type.getName().equals(getTypeName())) {
             Log.w(TAG, "typeName != className: " + getTypeName() + " != " + type.getName());
         }
         return GlobalEventBus.fromJson(getPreload(), type);

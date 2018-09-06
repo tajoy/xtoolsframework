@@ -3,8 +3,13 @@ package x.tools.framework;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.AssetManager;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 
 import org.apache.commons.lang3.ClassUtils;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,12 +22,18 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.SynchronousQueue;
 
 import x.tools.framework.api.AbstractApi;
 import x.tools.framework.api.ApiStatus;
 import x.tools.framework.error.BuilderError;
 import x.tools.framework.error.InitializeError;
 import x.tools.framework.error.XError;
+import x.tools.framework.event.Event;
+import x.tools.framework.event.EventBus;
+import x.tools.framework.event.GlobalEventBus;
+import x.tools.framework.event.annotation.AllEventSubscriber;
+import x.tools.framework.event.json.IJsonSerializer;
 import x.tools.framework.log.DefaultLoggerFactory;
 import x.tools.framework.log.ILoggerFactory;
 import x.tools.framework.log.LogApi;
@@ -30,8 +41,9 @@ import x.tools.framework.log.Loggable;
 import x.tools.framework.script.IScriptEngine;
 
 import static android.text.TextUtils.isEmpty;
+import static x.tools.framework.XUtils.getProcessName;
 
-public final class XContext extends ContextWrapper implements Loggable {
+public final class XContext extends ContextWrapper implements Loggable, EventBus {
     private static ILoggerFactory loggerFactory = new DefaultLoggerFactory();
 
     public static ILoggerFactory getLoggerFactory() {
@@ -49,7 +61,9 @@ public final class XContext extends ContextWrapper implements Loggable {
         private String pathScript;
         private String pathData;
         private String pathTemp;
-//        private String scriptLooperName;
+        private String scriptLooperName;
+        private IJsonSerializer jsonSerializer;
+        private String eventBusServerProcessName;
 
         public Builder(Context context) throws XError {
             this.context = context;
@@ -57,7 +71,8 @@ public final class XContext extends ContextWrapper implements Loggable {
             this.pathScript = new File(rootDir, "xScript").getAbsolutePath();
             this.pathData = new File(rootDir, "xData").getAbsolutePath();
             this.pathTemp = new File(context.getCacheDir(), "xTemp").getAbsolutePath();
-//            this.scriptLooperName = "Script-Looper";
+            this.scriptLooperName = "Script-Looper";
+            this.eventBusServerProcessName = context.getPackageName();
 
             // default api
             api(new XApi());
@@ -66,7 +81,7 @@ public final class XContext extends ContextWrapper implements Loggable {
 
         public Builder api(AbstractApi api) throws XError {
             if (apiMap.containsKey(api.getNamespace())) {
-                throw new BuilderError(context.getString(R.string.CONFLICT_NAMESPACE, api.getNamespace()));
+                throw new BuilderError(context.getString(R.string.X_TOOLS_CONFLICT_NAMESPACE, api.getNamespace()));
             }
             apiMap.put(api.getNamespace(), api);
             return this;
@@ -92,10 +107,20 @@ public final class XContext extends ContextWrapper implements Loggable {
             return this;
         }
 
-//        public Builder scriptLooperName(String scriptLooperName) {
-//            this.scriptLooperName = scriptLooperName;
-//            return this;
-//        }
+        public Builder jsonSerializer(IJsonSerializer jsonSerializer) {
+            this.jsonSerializer = jsonSerializer;
+            return this;
+        }
+
+        public Builder scriptLooperName(String scriptLooperName) {
+            this.scriptLooperName = scriptLooperName;
+            return this;
+        }
+
+        public Builder eventBusServerProcessName(String eventBusServerProcessName) {
+            this.eventBusServerProcessName = eventBusServerProcessName;
+            return this;
+        }
 
         public XContext build() {
             return new XContext(this);
@@ -108,8 +133,11 @@ public final class XContext extends ContextWrapper implements Loggable {
     private final String pathData;
     private final String pathTemp;
     private String initError = null;
-//    private final String scriptLooperName;
-//    private Looper scriptLooper;
+    private final String scriptLooperName;
+    private Looper scriptLooper;
+    private Handler scriptHandler;
+    private IJsonSerializer jsonSerializer;
+    private String eventBusServerProcessName;
 
     private XContext(Builder builder) {
         super(builder.context);
@@ -118,65 +146,99 @@ public final class XContext extends ContextWrapper implements Loggable {
         this.pathScript = builder.pathScript;
         this.pathData = builder.pathData;
         this.pathTemp = builder.pathTemp;
-//        this.scriptLooperName = builder.scriptLooperName;
+        this.scriptLooperName = builder.scriptLooperName;
+        this.jsonSerializer = builder.jsonSerializer;
+        this.eventBusServerProcessName = builder.eventBusServerProcessName;
     }
 
-//    private void initScriptLooper() throws XError {
-//        SynchronousQueue<Looper> waitQueue = new SynchronousQueue<>();
-//        HandlerThread handlerThread = new HandlerThread(scriptLooperName) {
-//            @Override
-//            protected void onLooperPrepared() {
-//                try {
-//                    waitQueue.put(getLooper());
-//                } catch (InterruptedException ignore) {
-//                }
-//            }
-//        };
-//        handlerThread.setDaemon(false);
-//        handlerThread.start();
-//        try {
-//            scriptLooper = waitQueue.take();
-//        } catch (InterruptedException e) {
-//            throw new InitializeError(e);
-//        }
-//    }
+    private void initScriptLooper() throws XError {
+        SynchronousQueue<Looper> waitQueue = new SynchronousQueue<>();
+        HandlerThread handlerThread = new HandlerThread(scriptLooperName) {
+            @Override
+            protected void onLooperPrepared() {
+                try {
+                    waitQueue.put(getLooper());
+                } catch (InterruptedException ignore) {
+                }
+            }
+        };
+        handlerThread.setDaemon(false);
+        handlerThread.start();
+        try {
+            scriptLooper = waitQueue.take();
+            scriptHandler = new Handler(scriptLooper);
+        } catch (InterruptedException e) {
+            throw new InitializeError(e);
+        }
+    }
 
+    private String getEventBusAddress() {
+        return "EventBus-" + eventBusServerProcessName;
+    }
+
+    private boolean isEventBusServerProcess() {
+        return eventBusServerProcessName.equals(getProcessName());
+    }
 
     private boolean isInited = false;
 
     public void initialize() throws XError {
         if (isInited) return;
 
+        // ensure data dir created
         File filePathData = new File(pathData);
-        if (!filePathData.isDirectory()) {
+        if (!filePathData.exists() || !filePathData.isDirectory()) {
             if (!filePathData.mkdirs()) {
                 throw new InitializeError(getString(
-                        R.string.CREATE_DIRECTORY_FAILED,
+                        R.string.X_TOOLS_CREATE_DIRECTORY_FAILED,
                         filePathData.getAbsolutePath()
                 ));
             }
         }
 
+        // ensure script dir created
         File filePathScript = new File(pathScript);
-        if (!filePathScript.isDirectory()) {
+        if (!filePathScript.exists() || !filePathScript.isDirectory()) {
             if (!filePathScript.mkdirs()) {
                 throw new InitializeError(getString(
-                        R.string.CREATE_DIRECTORY_FAILED,
+                        R.string.X_TOOLS_CREATE_DIRECTORY_FAILED,
                         filePathScript.getAbsolutePath()
                 ));
             }
         }
 
+        // init event
+        if (jsonSerializer != null) {
+            GlobalEventBus.setJsonSerializer(jsonSerializer);
+        } else {
+            GlobalEventBus.setClassLoader(this.getClassLoader());
+        }
 
-//        initScriptLooper();
+        try {
+            GlobalEventBus.getJsonSerializer();
+            GlobalEventBus.initClient(getEventBusAddress());
+            if (isEventBusServerProcess()) {
+                GlobalEventBus.initServer(getEventBusAddress());
+            }
+            GlobalEventBus.subscribe(this);
+        } catch (Throwable t) {
+            initError = t.toString();
+            throw new InitializeError(t);
+        }
+
+
+        // init script
         if (this.script != null) {
-            initError = getString(R.string.INIT_SCRIPT_FAILED);
+            initScriptLooper();
+            initError = getString(R.string.X_TOOLS_INIT_SCRIPT_FAILED);
             this.script.init(this);
         }
+
+        // init api
         List<AbstractApi> allApi = new ArrayList<>(this.apiMap.values());
         for (AbstractApi api : allApi) {
             initError = getString(
-                    R.string.INIT_API_FAILED,
+                    R.string.X_TOOLS_INIT_API_FAILED,
                     api.getClass(),
                     api.getNamespace()
             );
@@ -186,7 +248,7 @@ public final class XContext extends ContextWrapper implements Loggable {
             String[] failedDependence = api.checkDependence(allApi);
             if (failedDependence != null) {
                 initError = getString(
-                        R.string.INIT_API_DEPENDENCE_FAILED,
+                        R.string.X_TOOLS_INIT_API_DEPENDENCE_FAILED,
                         api.getClass(),
                         api.getNamespace(),
                         Arrays.toString(failedDependence)
@@ -201,8 +263,13 @@ public final class XContext extends ContextWrapper implements Loggable {
         isInited = true;
     }
 
-//    public void runInScriptLooper(Runnable runnable) {
-//    }
+    public void runInScriptLooper(Runnable runnable) {
+        scriptHandler.post(runnable);
+    }
+
+    public void runInScriptLooperDelayed(Runnable runnable, long delayMillis) {
+        scriptHandler.postDelayed(runnable, delayMillis);
+    }
 
     public String getPathScript() {
         return new File(pathScript).getAbsolutePath();
@@ -283,7 +350,7 @@ public final class XContext extends ContextWrapper implements Loggable {
 
     public String statusDescription() {
         if (XStatus.OK.equals(checkStatus())) {
-            return getString(R.string.OK);
+            return getString(R.string.X_TOOLS_OK);
         }
 
         StringBuilder sb = new StringBuilder();
@@ -297,7 +364,7 @@ public final class XContext extends ContextWrapper implements Loggable {
                 continue;
             }
             sb.append(getString(
-                    R.string.API_STATUS_DESCRIPTION,
+                    R.string.X_TOOLS_API_STATUS_DESCRIPTION,
                     api.getClass().getName(),
                     api.getNamespace(),
                     api.statusDescription()
@@ -333,6 +400,14 @@ public final class XContext extends ContextWrapper implements Loggable {
             try {
                 in = assetManager.open(fullPath);
                 File outFile = new File(to, filename);
+                if (outFile.exists()) {
+                    outFile.delete();
+                } else {
+                    File parent = outFile.getParentFile();
+                    if (!parent.exists() || !parent.isDirectory()) {
+                        parent.mkdirs();
+                    }
+                }
                 out = new FileOutputStream(outFile);
                 copyFile(in, out);
             } catch (IOException e) {
@@ -363,5 +438,46 @@ public final class XContext extends ContextWrapper implements Loggable {
 
     public boolean copyAssetsToScriptDir(String path) throws IOException {
         return copyAssets(path, getPathScript());
+    }
+
+
+    public static <T> T fromJson(String json, Class<T> cls) {
+        return GlobalEventBus.fromJson(json, cls);
+    }
+
+    public static String toJson(Object object) {
+        return GlobalEventBus.toJson(object);
+    }
+
+    @AllEventSubscriber
+    public void onAllEvent(Event event) throws JSONException, XError {
+        if (this.script != null) {
+            this.script.dispatchEvent(event.getName(), event.getData());
+        }
+    }
+
+    @Override
+    public void subscribe(Object subscriber) {
+        GlobalEventBus.subscribe(subscriber);
+    }
+
+    @Override
+    public void unsubscribe(Object subscriber) {
+        GlobalEventBus.unsubscribe(subscriber);
+    }
+
+    @Override
+    public void trigger(String name) {
+        GlobalEventBus.trigger(name);
+    }
+
+    @Override
+    public void trigger(String name, Object data) {
+        GlobalEventBus.trigger(name, data);
+    }
+
+    @Override
+    public void triggerRaw(String name, JSONObject data) {
+        GlobalEventBus.triggerRaw(name, data);
     }
 }

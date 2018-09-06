@@ -2,39 +2,48 @@ package x.tools.framework.event;
 
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
-import android.text.TextUtils;
 
+import org.json.JSONObject;
+
+import java.io.Closeable;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import x.tools.framework.error.AnnotationError;
 
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.synchronizedSet;
+import static x.tools.framework.XUtils.getProcessName;
 
-public class EventBusClient implements EventBus {
-    protected final Set<EventSubscriber> subscribers = synchronizedSet(
+public class EventBusClient implements EventBus, Closeable {
+    protected final Set<EventSubscriberWrapper> subscribers = synchronizedSet(
             newSetFromMap(
                     new WeakHashMap<>()
             )
     );
     private final String uuid;
-    private LocalSocket socket;
+    private final String processName;
     private EventReader eventReader;
     private EventWriter eventWriter;
     private LocalSocketAddress address;
+    private LocalSocket socket;
     private Thread connecting;
     private Thread receiving;
     private Thread sending;
 
-    EventBusClient(String address) throws IOException {
+    private final LinkedBlockingQueue<Event> sendingQueue = new LinkedBlockingQueue<>();
+
+    EventBusClient(String address) {
         this.uuid = UUID.randomUUID().toString();
+        this.processName = getProcessName();
         this.address = new LocalSocketAddress(address);
         this.eventReader = new EventReader();
         this.eventWriter = new EventWriter();
         this.connecting = new Thread(this::runConnecting);
-        this.connecting.setName("receiving-thread -" + this.toString());
+        this.connecting.setName("connecting-thread -" + this.toString());
         this.connecting.setDaemon(true);
         this.connecting.start();
 
@@ -43,14 +52,14 @@ public class EventBusClient implements EventBus {
         this.receiving.setDaemon(true);
         this.receiving.start();
 
-        this.receiving = new Thread(this::runReceiving);
-        this.receiving.setName("receiving-thread -" + this.toString());
-        this.receiving.setDaemon(true);
-        this.receiving.start();
+        this.sending = new Thread(this::runSending);
+        this.sending.setName("sending-thread -" + this.toString());
+        this.sending.setDaemon(true);
+        this.sending.start();
     }
 
     public String getId() {
-        return uuid;
+        return processName + "-" + uuid;
     }
 
     @Override
@@ -60,12 +69,44 @@ public class EventBusClient implements EventBus {
 
     @Override
     public void trigger(String name, Object data) {
-        Event event = new Event(
-                name,
-                getId(),
-                data.getClass().toString(),
-                GlobalEventBus.toJson(data)
-        );
+        Event event;
+        if (data == null) {
+            event = new Event(
+                    name,
+                    getId(),
+                    null,
+                    null
+            );
+        } else {
+            event = new Event(
+                    name,
+                    getId(),
+                    data.getClass().toString(),
+                    GlobalEventBus.toJson(data)
+            );
+        }
+        sendLocal(event);
+        sendRemote(event);
+    }
+
+    @Override
+    public void triggerRaw(String name, JSONObject data) {
+        Event event;
+        if (data == null) {
+            event = new Event(
+                    name,
+                    getId(),
+                    null,
+                    null
+            );
+        } else {
+            event = new Event(
+                    name,
+                    getId(),
+                    null,
+                    data.toString()
+            );
+        }
         sendLocal(event);
         sendRemote(event);
     }
@@ -73,7 +114,11 @@ public class EventBusClient implements EventBus {
 
     @Override
     public void subscribe(Object subscriber) {
-        subscribers.add(new EventSubscriber(subscriber));
+        try {
+            subscribers.add(new EventSubscriberWrapper(subscriber));
+        } catch (AnnotationError annotationError) {
+            annotationError.printStackTrace();
+        }
     }
 
     @Override
@@ -81,31 +126,26 @@ public class EventBusClient implements EventBus {
         subscribers.remove(subscriber);
     }
 
-    void sendLocal(Event event) {
+    private void sendLocal(Event event) {
         synchronized (subscribers) {
-            Iterator<EventSubscriber> iterator = subscribers.iterator();
-            while (iterator.hasNext()) {
-                EventSubscriber eventSubscriber = iterator.next();
-                eventSubscriber.onEvent(event);
+            for (EventSubscriberWrapper eventSubscriberWrapper : subscribers) {
+                eventSubscriberWrapper.onEvent(this, event);
             }
         }
     }
 
-    void sendRemote(Event event) {
-        try {
-            this.eventWriter.writeEvent(event);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void sendRemote(Event event) {
+        sendingQueue.offer(event);
     }
 
-    void runConnecting() {
+    private void runConnecting() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                this.socket = new LocalSocket();
-                this.socket.connect(this.address);
-                this.eventWriter.setOutputStream(this.socket.getOutputStream());
-                this.eventReader.setInputStream(this.socket.getInputStream());
+                LocalSocket socket = new LocalSocket();
+                socket.connect(this.address);
+                this.eventWriter.setOutputStream(socket.getOutputStream());
+                this.eventReader.setInputStream(socket.getInputStream());
+                this.socket = socket;
             } catch (IOException ignore) {
                 try {
                     Thread.sleep(1000);
@@ -119,19 +159,37 @@ public class EventBusClient implements EventBus {
         this.connecting = null;
     }
 
-    void runSending() {
+    private void runSending() {
         while (!Thread.currentThread().isInterrupted()) {
-            
+            try {
+                Event event = sendingQueue.take();
+                this.eventWriter.writeEvent(event);
+            } catch (InterruptedException e) {
+                break;
+            }
         }
     }
 
-    void runReceiving() {
+    private void runReceiving() {
         while (!Thread.currentThread().isInterrupted()) {
             Event event = this.eventReader.readEvent();
             if (event != null) {
                 sendLocal(event);
             }
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.sending.interrupt();
+        this.receiving.interrupt();
+
+        if (this.connecting != null)
+            this.connecting.interrupt();
+
+        if (this.socket != null)
+            this.socket.close();
+
     }
 
 

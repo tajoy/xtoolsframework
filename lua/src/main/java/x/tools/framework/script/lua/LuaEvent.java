@@ -1,16 +1,34 @@
 package x.tools.framework.script.lua;
 
-import org.luaj.vm2.LuaClosure;
+import org.apache.commons.lang3.ClassUtils;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.TwoArgFunction;
-import org.luaj.vm2.lib.VarArgFunction;
+
+import java.util.Iterator;
+
+import x.tools.framework.XContext;
+import x.tools.framework.event.EventBus;
 
 public class LuaEvent extends LuaFunction {
-    LuaTable module = new LuaTable();
-    LuaTable listener_map_list = new LuaTable();
+    private LuaTable module = new LuaTable();
+    private LuaTable listener_map_list = new LuaTable();
+    private XContext xContext;
+
+    public LuaEvent(XContext xContext) {
+        this.xContext = xContext;
+        xContext.subscribe(this);
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        xContext.unsubscribe(this);
+    }
 
     public LuaValue call(LuaValue modname, LuaValue env) {
         String namespace = "event";
@@ -57,24 +75,25 @@ public class LuaEvent extends LuaFunction {
         return LuaValue.FALSE;
     }
 
-    public Varargs dispatch(LuaValue _name, Varargs varargs) {
+    public void dispatch(LuaValue _name, LuaValue data) {
         String name = _name.checkjstring();
         LuaValue v = listener_map_list.rawget(name);
         if (v == null || v.isnil() || !v.istable()) {
-            return LuaValue.FALSE;
+            return;
         }
         LuaTable list = v.checktable();
-        LuaTable ret = new LuaTable();
         int count = list.length();
         for (int i = 1; i <= count; i++) {
             LuaValue listener = list.get(i);
             if (listener == null || listener.isnil() || !listener.isfunction()) {
                 continue;
             }
-            Varargs retVal = listener.invoke(_name, varargs);
-            ret.set(i, LuaScript.varargs2LuaValue(retVal));
+            listener.invoke(_name, data);
         }
-        return ret;
+    }
+
+    public void dispatch(String name, JSONObject data) {
+        dispatch(LuaValue.valueOf(name), LuaScript.convert(data));
     }
 
     public class add extends TwoArgFunction {
@@ -91,20 +110,15 @@ public class LuaEvent extends LuaFunction {
         }
     }
 
-    public class dispatch extends VarArgFunction {
+    public class dispatch extends TwoArgFunction {
         @Override
-        public Varargs invoke(Varargs varargs) {
-            int nArg = varargs.narg();
-            if (nArg < 1) {
-                LuaValue.argerror(1, "expect at least 1 string");
-                return NIL;
+        public LuaValue call(LuaValue arg1, LuaValue arg2) {
+            if (arg2.isnil()) {
+                xContext.trigger(arg1.checkjstring());
+            } else {
+                xContext.trigger(arg1.checkjstring(), LuaScript.convertToJSONObject(arg2.checktable()));
             }
-            switch (nArg) {
-                case 1:
-                    return LuaEvent.this.dispatch(varargs.checkstring(1), NIL);
-                default:
-                    return LuaEvent.this.dispatch(varargs.checkstring(1), varargs.subargs(2));
-            }
+            return NIL;
         }
     }
 }
