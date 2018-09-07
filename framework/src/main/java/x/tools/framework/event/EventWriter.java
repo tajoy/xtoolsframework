@@ -9,8 +9,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class EventWriter {
-    private final Lock lock = new ReentrantLock();
-    private Condition notNull = lock.newCondition();
     private final AtomicReference<OutputStream> outputStream = new AtomicReference<>(null);
 
     EventWriter() {
@@ -18,28 +16,16 @@ public class EventWriter {
 
     public void setOutputStream(OutputStream outputStream) {
         this.outputStream.set(outputStream);
-        if (!lock.tryLock())
-            notNull.notifyAll();
     }
 
     public void writeEvent(Event event) {
         try {
             do {
-                OutputStream outputStream;
-                lock.lock();
-                try {
-                    outputStream = this.outputStream.get();
-                    while (outputStream == null) {
-                        notNull.await();
-                        outputStream = this.outputStream.get();
-                    }
-                } finally {
-                    try {
-                        lock.unlock();
-                    } catch (Throwable ignore) {
-                    }
+                OutputStream outputStream = this.outputStream.get();
+                if (outputStream == null) {
+                    Thread.sleep(100);
+                    continue;
                 }
-
 
                 try {
                     ObjectOutputStream oos = new ObjectOutputStream(outputStream);

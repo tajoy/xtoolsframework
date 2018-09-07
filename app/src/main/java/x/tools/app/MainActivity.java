@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import com.google.gson.Gson;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -27,10 +28,9 @@ import x.tools.framework.event.annotation.EventSubscriber;
 import x.tools.framework.log.Loggable;
 import x.tools.framework.script.lua.LuaScript;
 
+import static x.tools.app.MainApplication.getXContext;
+
 public class MainActivity extends AppCompatActivity implements Loggable {
-    private XContext xContext;
-    private final LuaScript luaScript = new LuaScript();
-    private final Gson gson = new Gson();
 
     public static final String[] PERMISSIONS = {
             Manifest.permission.INTERNET,
@@ -64,51 +64,22 @@ public class MainActivity extends AppCompatActivity implements Loggable {
             );
         }
 
-        Context context = this.getApplicationContext();
-        try {
-            xContext = new XContext.Builder(context)
-                    .script(luaScript)
-                    .api(ScreencapApi.getInstance(context))
-                    .api(new ImageApi())
-                    .build();
-            xContext.copyAssetsToScriptDir("script");
-            xContext.initialize();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
-
         findViewById(R.id.button).setOnClickListener(v -> {
-            XStatus status = xContext.checkStatus();
+            XStatus status = getXContext().checkStatus();
             if (status.isOk()) {
                 this.startScript();
             } else {
-                Toast.makeText(this, xContext.statusDescription(), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getXContext().statusDescription(), Toast.LENGTH_LONG).show();
             }
         });
     }
 
     private void startScript() {
         try {
-            luaScript.runScriptFile("main.lua");
+            getXContext().getScript().runScriptFile("main.lua");
         } catch (XError e) {
             e.printStackTrace();
         }
     }
 
-    @EventSubscriber(name = "ping")
-    public void onPing(Event event) throws XError, JSONException {
-        info("%s -> %s", event.getName(), event.getData());
-        JSONObject inner = new JSONObject();
-        inner.put("1", 1);
-        inner.put("2", 2);
-        inner.put("3", 3);
-        inner.put("4", 4);
-        JSONObject data = new JSONObject();
-        inner.put("1", 1);
-        inner.put("2", 2);
-        inner.put("3", 3);
-        inner.put("4", inner);
-        xContext.triggerRaw("pong", data);
-    }
 }

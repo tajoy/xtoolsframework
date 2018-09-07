@@ -2,20 +2,26 @@ package x.tools.framework.event;
 
 import android.text.TextUtils;
 
+import org.apache.commons.lang3.ClassUtils;
+
 import java.lang.annotation.Annotation;
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 import x.tools.framework.error.AnnotationError;
 import x.tools.framework.event.annotation.AllEventSubscriber;
 import x.tools.framework.event.annotation.ErrorSubscriber;
 import x.tools.framework.event.annotation.EventSubscriber;
+import x.tools.framework.log.Loggable;
 
-class EventSubscriberWrapper {
+class EventSubscriberWrapper implements Loggable {
     private static class SubscriberInfo {
         private Method method;
         private String name;
@@ -42,17 +48,37 @@ class EventSubscriberWrapper {
         }
     }
 
-    private final WeakReference<Object> subscriber;
+    private final AtomicReference<Object> subscriber;
     private final List<Method> allEventSubscriberList = new ArrayList<>();
     private final List<Method> errorEventSubscriberList = new ArrayList<>();
     private final List<SubscriberInfo> subscriberInfoList = new ArrayList<>();
 
     private static void checkMethod(Method method, Class... types) throws AnnotationError {
-
+        Class[] parameterTypes = method.getParameterTypes();
+        if (types.length != parameterTypes.length) {
+            throw new AnnotationError(
+                    String.format(
+                            "expected %s, but got %s",
+                            Arrays.toString(types),
+                            Arrays.toString(parameterTypes)
+                    )
+            );
+        }
+        for (int i = 0; i < types.length; i++) {
+            if (!ClassUtils.isAssignable(types[i], parameterTypes[i])) {
+                throw new AnnotationError(
+                        String.format(
+                                "expected %s, but got %s",
+                                Arrays.toString(types),
+                                Arrays.toString(parameterTypes)
+                        )
+                );
+            }
+        }
     }
 
     EventSubscriberWrapper(Object subscriber) throws AnnotationError {
-        this.subscriber = new WeakReference<>(subscriber);
+        this.subscriber = new AtomicReference<>(subscriber);
         Class cls = subscriber.getClass();
         Method[] methods = cls.getDeclaredMethods();
         for (Method method : methods) {
@@ -107,12 +133,16 @@ class EventSubscriberWrapper {
             eventBus.unsubscribe(this);
             return;
         }
-        for (Method method : errorEventSubscriberList) {
-            try {
-                method.invoke(s, event, throwable);
-            } catch (Throwable t) {
-                t.printStackTrace();
+        if (errorEventSubscriberList.size() > 0) {
+            for (Method method : errorEventSubscriberList) {
+                try {
+                    method.invoke(s, event, throwable);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
             }
+        } else {
+            error(throwable, "Handle %s got ERROR!", event);
         }
     }
 
@@ -132,5 +162,15 @@ class EventSubscriberWrapper {
             return subscriber.hashCode();
         }
         return subscriber.get().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "EventSubscriberWrapper{" +
+                "subscriber=" + String.valueOf(subscriber.get()) +
+                ", allEventSubscriberList=" + allEventSubscriberList +
+                ", errorEventSubscriberList=" + errorEventSubscriberList +
+                ", subscriberInfoList=" + subscriberInfoList +
+                '}';
     }
 }

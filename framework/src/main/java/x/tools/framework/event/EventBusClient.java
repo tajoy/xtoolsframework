@@ -7,23 +7,26 @@ import org.json.JSONObject;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import x.tools.framework.error.AnnotationError;
+import x.tools.framework.log.Loggable;
 
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.synchronizedSet;
 import static x.tools.framework.XUtils.getProcessName;
 
-public class EventBusClient implements EventBus, Closeable {
+public class EventBusClient implements EventBus, Closeable, Loggable {
     protected final Set<EventSubscriberWrapper> subscribers = synchronizedSet(
             newSetFromMap(
-                    new WeakHashMap<>()
+                    new HashMap<>()
             )
     );
+
     private final String uuid;
     private final String processName;
     private EventReader eventReader;
@@ -142,7 +145,9 @@ public class EventBusClient implements EventBus, Closeable {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 LocalSocket socket = new LocalSocket();
+                debug("client connecting to: %s", this.address.getName());
                 socket.connect(this.address);
+                debug("client connected!");
                 this.eventWriter.setOutputStream(socket.getOutputStream());
                 this.eventReader.setInputStream(socket.getInputStream());
                 this.socket = socket;

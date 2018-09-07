@@ -179,16 +179,16 @@ public class LuaScript implements IScriptEngine {
                     if (value == null || JSONObject.NULL.equals(value))
                         continue;
                     if (ClassUtils.isPrimitiveOrWrapper(value.getClass())) {
-                        ret.set(i, LuaScript.createLuaValue(value));
+                        ret.set(i + 1, LuaScript.createLuaValue(value));
                     } else {
                         if (value instanceof Number) {
-                            ret.set(i, LuaScript.createLuaValue(value));
+                            ret.set(i + 1, LuaScript.createLuaValue(value));
                         }
                         if (value instanceof JSONArray) {
-                            ret.set(i, convert((JSONArray) value));
+                            ret.set(i + 1, convert((JSONArray) value));
                         }
                         if (value instanceof JSONObject) {
-                            ret.set(i, convert((JSONObject) value));
+                            ret.set(i + 1, convert((JSONObject) value));
                         }
                     }
                 } catch (Exception ignore) {
@@ -236,7 +236,7 @@ public class LuaScript implements IScriptEngine {
             Varargs n = table.inext(i);
             if ((i = n.arg1()).isnil())
                 break;
-            arrayCount ++;
+            arrayCount++;
         }
 
         LuaValue k = LuaValue.NIL;
@@ -245,7 +245,7 @@ public class LuaScript implements IScriptEngine {
             Varargs n = table.next(k);
             if ((k = n.arg1()).isnil())
                 break;
-            keyCount ++;
+            keyCount++;
         }
         return arrayCount == keyCount;
     }
@@ -268,12 +268,19 @@ public class LuaScript implements IScriptEngine {
                     break;
                 try {
                     int index = i.checkint();
-                    LuaValue value = n.arg1();
+                    LuaValue value = n.arg(2);
+                    if (value.isnil()) {
+                        continue;
+                    }
                     if (value.istable()) {
                         ret.put(index, convertToJSON(value.checktable()));
                     } else {
                         Object object = LuaScript.convertTo(value);
-                        if (ClassUtils.isPrimitiveOrWrapper(value.getClass())) {
+                        if (object == null) {
+                            continue;
+                        }
+                        Class cls = object.getClass();
+                        if (ClassUtils.isPrimitiveOrWrapper(cls) || ClassUtils.isAssignable(cls, String.class)) {
                             ret.put(index, object);
                         } else {
                             ret.put(index, new JSONObject(XContext.toJson(object)));
@@ -296,12 +303,19 @@ public class LuaScript implements IScriptEngine {
                     break;
                 try {
                     String key = convertTo(k).toString();
-                    LuaValue value = n.arg1();
+                    LuaValue value = n.arg(2);
+                    if (value.isnil()) {
+                        continue;
+                    }
                     if (value.istable()) {
                         ret.put(key, convertToJSON(value.checktable()));
                     } else {
                         Object object = LuaScript.convertTo(value);
-                        if (ClassUtils.isPrimitiveOrWrapper(value.getClass())) {
+                        if (object == null) {
+                            continue;
+                        }
+                        Class cls = object.getClass();
+                        if (ClassUtils.isPrimitiveOrWrapper(cls) || ClassUtils.isAssignable(cls, String.class)) {
                             ret.put(key, object);
                         } else {
                             ret.put(key, new JSONObject(XContext.toJson(object)));

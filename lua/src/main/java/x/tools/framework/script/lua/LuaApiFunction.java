@@ -103,9 +103,8 @@ public class LuaApiFunction extends VarArgFunction {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append(this.api.getNamespace());
-        sb.append(this.metaInfoList.get(0).getName());
-        sb.append("\n");
+        sb.append(this.api.getNamespace()).append(".");
+        sb.append(this.metaInfoList.get(0).getName()).append("\n");
 
         for (int i = 0; i < this.metaInfoList.size(); i++) {
             ApiMetaInfo metaInfo = this.metaInfoList.get(i);

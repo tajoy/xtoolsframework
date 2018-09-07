@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 
 import x.tools.framework.R;
 import x.tools.framework.XContext;
@@ -20,7 +21,7 @@ import x.tools.framework.log.Loggable;
 public abstract class AbstractApi extends ContextWrapper implements Loggable {
     protected XContext xContext;
     protected boolean isInitialize = false;
-    protected Map<String, ApiMetaInfo> apiMetaInfoMap = null;
+    protected List<ApiMetaInfo> apiMetaInfoList = null;
 
     public AbstractApi() {
         super(null);
@@ -63,7 +64,7 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
         attachBaseContext(xContext);
 
         this.xContext = xContext;
-        Map<String, ApiMetaInfo> apiMetaInfoMap = new HashMap<>();
+        List<ApiMetaInfo> apiMetaInfoList = new ArrayList<>();
         // load api meta info
         Class<?> selfClass = getClass();
         Field[] fields = selfClass.getFields();
@@ -71,16 +72,16 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
             ApiConstant apiConstant = field.getAnnotation(ApiConstant.class);
             if (apiConstant == null) continue;
             ApiMetaInfo metaInfo = new ApiMetaInfo(this.getBaseContext(), apiConstant.name(), field);
-            apiMetaInfoMap.put(metaInfo.getName(), metaInfo);
+            apiMetaInfoList.add(metaInfo);
         }
         Method[] methods = selfClass.getMethods();
         for (Method method : methods) {
             Api api = method.getAnnotation(Api.class);
             if (api == null) continue;
             ApiMetaInfo metaInfo = new ApiMetaInfo(this.getBaseContext(), api.name(), method);
-            apiMetaInfoMap.put(metaInfo.getName(), metaInfo);
+            apiMetaInfoList.add(metaInfo);
         }
-        this.apiMetaInfoMap = Collections.unmodifiableMap(apiMetaInfoMap);
+        this.apiMetaInfoList = Collections.unmodifiableList(apiMetaInfoList);
         isInitialize = true;
         return true;
     }
@@ -125,24 +126,34 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
         return this.xContext;
     }
 
-    public ApiMetaInfo getApiMetaInfo(String name) {
-        if (apiMetaInfoMap == null) {
-            return null;
+    public ApiMetaInfo[] getApiMetaInfo(String name) {
+        List<ApiMetaInfo> retList = new ArrayList<>();
+        if (this.apiMetaInfoList == null) {
+            return new ApiMetaInfo[0];
         }
-        return apiMetaInfoMap.get(name);
+        for (ApiMetaInfo info : this.apiMetaInfoList) {
+            if (info.getName().equals(name)) {
+                retList.add(info);
+            }
+        }
+        return retList.toArray(new ApiMetaInfo[retList.size()]);
     }
 
     public String[] getApiMetaInfoNames() {
-        if (apiMetaInfoMap == null) {
+        List<String> retList = new ArrayList<>();
+        if (apiMetaInfoList == null) {
             return new String[0];
         }
-        return apiMetaInfoMap.keySet().toArray(new String[0]);
+        for (ApiMetaInfo info : apiMetaInfoList) {
+            retList.add(info.getName());
+        }
+        return retList.toArray(new String[retList.size()]);
     }
 
     public ApiMetaInfo[] getApiMetaInfo() {
-        if (apiMetaInfoMap == null) {
+        if (apiMetaInfoList == null) {
             return new ApiMetaInfo[0];
         }
-        return apiMetaInfoMap.values().toArray(new ApiMetaInfo[0]);
+        return apiMetaInfoList.toArray(new ApiMetaInfo[apiMetaInfoList.size()]);
     }
 }

@@ -9,10 +9,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 
+import x.tools.framework.log.Loggable;
+
 import static x.tools.framework.XUtils.getProcessName;
 
 
-public class EventBusServer implements Closeable {
+public class EventBusServer implements Closeable, Loggable {
     private LocalServerSocket serverSocket;
     private Thread acceptor;
     private final Set<ClientHandler> sockets =
@@ -39,6 +41,8 @@ public class EventBusServer implements Closeable {
         while (!Thread.currentThread().isInterrupted() && this.serverSocket != null) {
             try {
                 LocalSocket socket = this.serverSocket.accept();
+                int pid = socket.getPeerCredentials().getPid();
+                debug("accept client: %d %s", pid, getProcessName(pid));
                 this.sockets.add(new ClientHandler(socket));
             } catch (Throwable t) {
                 t.printStackTrace();

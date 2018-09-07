@@ -118,10 +118,11 @@ public class Event implements java.io.Serializable {
     }
 
     public <T> T getData(Class<T> type) {
+        if (type == null) throw new AssertionError("type == null");
         if (getPreload() == null) {
             return null;
         }
-        if (!type.getName().equals(getTypeName())) {
+        if (getTypeName() != null && !type.getName().equals(getTypeName())) {
             Log.w(TAG, "typeName != className: " + getTypeName() + " != " + type.getName());
         }
         return GlobalEventBus.fromJson(getPreload(), type);

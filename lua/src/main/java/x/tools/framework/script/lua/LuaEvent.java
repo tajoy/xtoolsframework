@@ -21,13 +21,6 @@ public class LuaEvent extends LuaFunction {
 
     public LuaEvent(XContext xContext) {
         this.xContext = xContext;
-        xContext.subscribe(this);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        xContext.unsubscribe(this);
     }
 
     public LuaValue call(LuaValue modname, LuaValue env) {
@@ -116,7 +109,7 @@ public class LuaEvent extends LuaFunction {
             if (arg2.isnil()) {
                 xContext.trigger(arg1.checkjstring());
             } else {
-                xContext.trigger(arg1.checkjstring(), LuaScript.convertToJSONObject(arg2.checktable()));
+                xContext.triggerRaw(arg1.checkjstring(), LuaScript.convertToJSONObject(arg2.checktable()));
             }
             return NIL;
         }

@@ -324,8 +324,12 @@ public final class XContext extends ContextWrapper implements Loggable, EventBus
         return null;
     }
 
-    public AbstractApi[] getNotOkApi() {
-        return null;
+    public IScriptEngine getScript() {
+        return script;
+    }
+
+    public boolean isInited() {
+        return isInited;
     }
 
     public XStatus checkStatus() {
