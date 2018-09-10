@@ -1,0 +1,97 @@
+:local .container {
+    position: relative;
+    box-sizing: border-box;
+}
+
+:local .image {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    width: 100%;
+    height: auto;
+}
+
+:local .imageCanvas {
+    opacity: 0;
+    top: 0px;
+    left: 0px;
+    position: absolute;
+    display: none;
+}
+
+:local .rectCanvas {
+    z-index: 1;
+    top: 0px;
+    left: 0px;
+    position: absolute;
+}
+
+:local .glass {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 5px solid #d4d7dc;
+    pointer-events: none;
+    z-index: 2;
+    box-sizing: container-box;
+    cursor: none;
+}
+
+:local .glassText {
+    position: absolute;
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    text-align: center;
+    font-size: 12px;
+}
+
+:local .position {
+    display: block;
+}
+
+:local .rgbaColor {
+    display: block;
+}
+
+:local .hexColor {
+    display: block;
+}
+
+:local .infoX {
+    left: 20px;
+    top: -20px;
+    width: 100px;
+    display: inline-block;
+    position: absolute;
+    font-size: 12px;
+}
+
+:local .infoY {
+    left: 80px;
+    top: -20px;
+    width: 100px;
+    display: inline-block;
+    position: absolute;
+    font-size: 12px;
+}
+
+:local .infoColor {
+    left: 160px;
+    top: -20px;
+    width: 120px;
+    display: inline-block;
+    position: absolute;
+    font-size: 12px;
+}
+
+:local .infoBoxColor {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+    border: 1px dashed gray;
+    font-size: 12px;
+}

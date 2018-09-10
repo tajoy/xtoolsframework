@@ -1,0 +1,24 @@
+productName: UI嗅探工具
+directories:
+  output: dist
+  buildResources: build
+extraMetadata:
+  main: main_prod.js
+asar: true
+files:
+  from: .
+  filter:
+    - main_prod.js
+    - build/
+mac:
+  icon: dist/res/icon.icns
+  target:
+    - target: dir
+      arch:
+        - x64
+win:
+  icon: dist/res/icon.ico
+  target:
+    - target: portable
+      arch:
+        - x64

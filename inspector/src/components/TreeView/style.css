@@ -1,0 +1,42 @@
+:local .view {
+    width: 100%;
+    margin-left: 16px;
+}
+
+:local .view>.children .view {
+    width: 100%;
+    margin-left: 0px;
+}
+
+:local .item {
+    width: 100%;
+    white-space: nowrap;
+}
+
+:local .children {
+    margin-left: 16px;
+    width: 100%;
+}
+
+:local .arrow {
+    cursor: pointer;
+    margin-left: -9px;
+    display: inline-block;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+:local .arrow:after {
+    content: '\25BE';
+}
+
+/* rotate the triangle to close it */
+
+:local .arrowCollapsed {
+    -webkit-transform: rotate(-90deg);
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+}
