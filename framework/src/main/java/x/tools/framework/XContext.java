@@ -30,8 +30,8 @@ import x.tools.framework.error.BuilderError;
 import x.tools.framework.error.InitializeError;
 import x.tools.framework.error.XError;
 import x.tools.framework.event.Event;
+import x.tools.framework.event.IEventBus;
 import x.tools.framework.event.EventBus;
-import x.tools.framework.event.GlobalEventBus;
 import x.tools.framework.event.annotation.AllEventSubscriber;
 import x.tools.framework.event.json.IJsonSerializer;
 import x.tools.framework.log.DefaultLoggerFactory;
@@ -43,7 +43,7 @@ import x.tools.framework.script.IScriptEngine;
 import static android.text.TextUtils.isEmpty;
 import static x.tools.framework.XUtils.getProcessName;
 
-public final class XContext extends ContextWrapper implements Loggable, EventBus {
+public final class XContext extends ContextWrapper implements Loggable, IEventBus {
     private static ILoggerFactory loggerFactory = new DefaultLoggerFactory();
 
     public static ILoggerFactory getLoggerFactory() {
@@ -209,18 +209,18 @@ public final class XContext extends ContextWrapper implements Loggable, EventBus
 
         // init event
         if (jsonSerializer != null) {
-            GlobalEventBus.setJsonSerializer(jsonSerializer);
+            EventBus.setJsonSerializer(jsonSerializer);
         } else {
-            GlobalEventBus.setClassLoader(this.getClassLoader());
+            EventBus.setClassLoader(this.getClassLoader());
         }
 
         try {
-            GlobalEventBus.getJsonSerializer();
-            GlobalEventBus.initClient(getEventBusAddress());
+            EventBus.getJsonSerializer();
+            EventBus.initClient(getEventBusAddress());
             if (isEventBusServerProcess()) {
-                GlobalEventBus.initServer(getEventBusAddress());
+                EventBus.initServer(getEventBusAddress());
             }
-            GlobalEventBus.subscribe(this);
+            EventBus.subscribe(this);
         } catch (Throwable t) {
             initError = t.toString();
             throw new InitializeError(t);
@@ -446,11 +446,11 @@ public final class XContext extends ContextWrapper implements Loggable, EventBus
 
 
     public static <T> T fromJson(String json, Class<T> cls) {
-        return GlobalEventBus.fromJson(json, cls);
+        return EventBus.fromJson(json, cls);
     }
 
     public static String toJson(Object object) {
-        return GlobalEventBus.toJson(object);
+        return EventBus.toJson(object);
     }
 
     @AllEventSubscriber
@@ -462,26 +462,26 @@ public final class XContext extends ContextWrapper implements Loggable, EventBus
 
     @Override
     public void subscribe(Object subscriber) {
-        GlobalEventBus.subscribe(subscriber);
+        EventBus.subscribe(subscriber);
     }
 
     @Override
     public void unsubscribe(Object subscriber) {
-        GlobalEventBus.unsubscribe(subscriber);
+        EventBus.unsubscribe(subscriber);
     }
 
     @Override
     public void trigger(String name) {
-        GlobalEventBus.trigger(name);
+        EventBus.trigger(name);
     }
 
     @Override
     public void trigger(String name, Object data) {
-        GlobalEventBus.trigger(name, data);
+        EventBus.trigger(name, data);
     }
 
     @Override
     public void triggerRaw(String name, JSONObject data) {
-        GlobalEventBus.triggerRaw(name, data);
+        EventBus.triggerRaw(name, data);
     }
 }

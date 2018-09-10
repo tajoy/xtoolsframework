@@ -2,7 +2,7 @@ package x.tools.framework.event.json;
 
 import java.lang.reflect.Method;
 
-import x.tools.framework.event.GlobalEventBus;
+import x.tools.framework.event.EventBus;
 
 public class GsonSerializer implements IJsonSerializer {
     private final Class class_Gson;
@@ -11,7 +11,7 @@ public class GsonSerializer implements IJsonSerializer {
     private final Object instance_Gson;
 
     public GsonSerializer() throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InstantiationException {
-        class_Gson = GlobalEventBus.getClassLoader().loadClass("com.google.gson.Gson");
+        class_Gson = EventBus.getClassLoader().loadClass("com.google.gson.Gson");
         method_toJson = class_Gson.getDeclaredMethod("toJson", Object.class);
         method_fromJson = class_Gson.getDeclaredMethod("fromJson", String.class, Class.class);
         instance_Gson = class_Gson.newInstance();

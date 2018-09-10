@@ -111,7 +111,7 @@ public class Event implements java.io.Serializable {
         if (getTypeName() == null)
             return null;
         try {
-            return GlobalEventBus.fromJson(getPreload(), classLoader.loadClass(getTypeName()));
+            return EventBus.fromJson(getPreload(), classLoader.loadClass(getTypeName()));
         } catch (ClassNotFoundException e) {
             return null;
         }
@@ -125,7 +125,7 @@ public class Event implements java.io.Serializable {
         if (getTypeName() != null && !type.getName().equals(getTypeName())) {
             Log.w(TAG, "typeName != className: " + getTypeName() + " != " + type.getName());
         }
-        return GlobalEventBus.fromJson(getPreload(), type);
+        return EventBus.fromJson(getPreload(), type);
     }
 
 

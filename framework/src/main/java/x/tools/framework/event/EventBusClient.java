@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
-import java.util.WeakHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import x.tools.framework.error.AnnotationError;
@@ -20,7 +19,7 @@ import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.synchronizedSet;
 import static x.tools.framework.XUtils.getProcessName;
 
-public class EventBusClient implements EventBus, Closeable, Loggable {
+public class EventBusClient implements IEventBus, Closeable, Loggable {
     protected final Set<EventSubscriberWrapper> subscribers = synchronizedSet(
             newSetFromMap(
                     new HashMap<>()
@@ -85,7 +84,7 @@ public class EventBusClient implements EventBus, Closeable, Loggable {
                     name,
                     getId(),
                     data.getClass().toString(),
-                    GlobalEventBus.toJson(data)
+                    EventBus.toJson(data)
             );
         }
         sendLocal(event);

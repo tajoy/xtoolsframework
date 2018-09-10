@@ -18,7 +18,7 @@ import x.tools.framework.annotation.ApiConstant;
 import x.tools.framework.error.XError;
 import x.tools.framework.log.Loggable;
 
-public abstract class AbstractApi extends ContextWrapper implements Loggable {
+public abstract class AbstractApi extends ContextWrapper implements Loggable, IApi {
     protected XContext xContext;
     protected boolean isInitialize = false;
     protected List<ApiMetaInfo> apiMetaInfoList = null;
@@ -93,12 +93,12 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
         return ApiStatus.OK;
     }
 
-    @Api(name = "checkStatus")
+    @Override
     public int _checkStatus() {
         return checkStatus().ordinal();
     }
 
-    @Api
+    @Override
     public String statusDescription() {
         switch (checkStatus()) {
             case OK:
@@ -117,7 +117,7 @@ public abstract class AbstractApi extends ContextWrapper implements Loggable {
         }
     }
 
-    @Api
+    @Override
     public boolean isOk() {
         return ApiStatus.OK.equals(checkStatus());
     }

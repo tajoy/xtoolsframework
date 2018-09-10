@@ -2,14 +2,14 @@ package x.tools.framework.event.json;
 
 import java.lang.reflect.Method;
 
-import x.tools.framework.event.GlobalEventBus;
+import x.tools.framework.event.EventBus;
 
 public class FastJsonSerializer implements IJsonSerializer {
     private final Class class_JSON;
     private final Method method_toJSONString;
     private final Method method_parseObject;
     public FastJsonSerializer() throws ClassNotFoundException, NoSuchMethodException {
-        class_JSON = GlobalEventBus.getClassLoader().loadClass("com.alibaba.fastjson.JSON");
+        class_JSON = EventBus.getClassLoader().loadClass("com.alibaba.fastjson.JSON");
         method_toJSONString = class_JSON.getDeclaredMethod("toJSONString", Object.class);
         method_parseObject = class_JSON.getDeclaredMethod("parseObject", String.class, Class.class);
     }

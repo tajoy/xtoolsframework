@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
@@ -12,10 +11,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import x.tools.framework.XContext;
 import x.tools.framework.error.XError;
 import x.tools.framework.event.Event;
-import x.tools.framework.event.GlobalEventBus;
 import x.tools.framework.event.annotation.EventSubscriber;
 import x.tools.framework.log.Loggable;
 

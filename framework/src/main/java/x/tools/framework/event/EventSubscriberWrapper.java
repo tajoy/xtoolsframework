@@ -5,9 +5,6 @@ import android.text.TextUtils;
 import org.apache.commons.lang3.ClassUtils;
 
 import java.lang.annotation.Annotation;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -101,7 +98,7 @@ class EventSubscriberWrapper implements Loggable {
         }
     }
 
-    public void onEvent(EventBus eventBus, Event event) {
+    public void onEvent(IEventBus eventBus, Event event) {
         Object s = subscriber.get();
         if (s == null) {
             eventBus.unsubscribe(this);
@@ -127,7 +124,7 @@ class EventSubscriberWrapper implements Loggable {
         }
     }
 
-    public void onError(EventBus eventBus, Event event, Throwable throwable) {
+    public void onError(IEventBus eventBus, Event event, Throwable throwable) {
         Object s = subscriber.get();
         if (s == null) {
             eventBus.unsubscribe(this);
