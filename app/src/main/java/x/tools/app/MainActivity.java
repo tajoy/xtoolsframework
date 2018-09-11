@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
@@ -20,11 +21,15 @@ import java.util.List;
 
 import x.tools.framework.XContext;
 import x.tools.framework.XStatus;
+import x.tools.framework.XUtils;
 import x.tools.framework.api.image.ImageApi;
 import x.tools.framework.api.screencap.ScreencapApi;
 import x.tools.framework.error.XError;
 import x.tools.framework.event.Event;
+import x.tools.framework.event.IEventListener;
 import x.tools.framework.event.annotation.EventSubscriber;
+import x.tools.framework.event.annotation.SyncValue;
+import x.tools.framework.event.sync.SyncStringValue;
 import x.tools.framework.log.Loggable;
 import x.tools.framework.script.lua.LuaScript;
 
@@ -63,6 +68,8 @@ public class MainActivity extends AppCompatActivity implements Loggable {
                     REQUEST_PERMISSION
             );
         }
+        getXContext().subscribe(this);
+
 
         findViewById(R.id.button).setOnClickListener(v -> {
             XStatus status = getXContext().checkStatus();
@@ -72,6 +79,12 @@ public class MainActivity extends AppCompatActivity implements Loggable {
                 Toast.makeText(this, getXContext().statusDescription(), Toast.LENGTH_LONG).show();
             }
         });
+        new Handler().postDelayed(this::changeValue, XUtils.randomRange(100, 200));
+    }
+
+    private void changeValue() {
+        Status.getInst().setStatus(XUtils.randomText(32));
+        new Handler().postDelayed(this::changeValue, XUtils.randomRange(100, 200));
     }
 
     private void startScript() {

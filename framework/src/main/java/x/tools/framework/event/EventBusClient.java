@@ -7,12 +7,18 @@ import org.json.JSONObject;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import x.tools.framework.error.AnnotationError;
+import x.tools.framework.event.annotation.SyncValue;
+import x.tools.framework.event.sync.SyncBooleanValue;
 import x.tools.framework.log.Loggable;
 
 import static java.util.Collections.newSetFromMap;
@@ -20,11 +26,29 @@ import static java.util.Collections.synchronizedSet;
 import static x.tools.framework.XUtils.getProcessName;
 
 public class EventBusClient implements IEventBus, Closeable, Loggable {
-    protected final Set<EventSubscriberWrapper> subscribers = synchronizedSet(
+    private final Set<EventSubscriberWrapper> subscribers = synchronizedSet(
             newSetFromMap(
                     new HashMap<>()
             )
     );
+
+    private static class EventListenerComparator implements Comparator<IEventListener> {
+        @Override
+        public int compare(IEventListener o1, IEventListener o2) {
+            if (o1 == o2) {
+                return 0;
+            }
+            if (o1 == null) {
+                return -1;
+            }
+            if (o2 == null) {
+                return 1;
+            }
+            return o1.compareTo(o2);
+        }
+    }
+
+    private final SortedSet<IEventListener> listeners = new ConcurrentSkipListSet<>(new EventListenerComparator());
 
     private final String uuid;
     private final String processName;
@@ -41,25 +65,28 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
     EventBusClient(String address) {
         this.uuid = UUID.randomUUID().toString();
         this.processName = getProcessName();
-        this.address = new LocalSocketAddress(address);
-        this.eventReader = new EventReader();
-        this.eventWriter = new EventWriter();
-        this.connecting = new Thread(this::runConnecting);
-        this.connecting.setName("connecting-thread -" + this.toString());
-        this.connecting.setDaemon(true);
-        this.connecting.start();
+        if (address != null) {
+            this.address = new LocalSocketAddress(address);
+            this.connecting = new Thread(this::runConnecting);
+            this.connecting.setName("connecting-thread -" + this.toString());
+            this.connecting.setDaemon(true);
+            this.connecting.start();
+            this.eventReader = new EventReader();
+            this.eventWriter = new EventWriter();
 
-        this.receiving = new Thread(this::runReceiving);
-        this.receiving.setName("receiving-thread -" + this.toString());
-        this.receiving.setDaemon(true);
-        this.receiving.start();
+            this.receiving = new Thread(this::runReceiving);
+            this.receiving.setName("receiving-thread -" + this.toString());
+            this.receiving.setDaemon(true);
+            this.receiving.start();
 
-        this.sending = new Thread(this::runSending);
-        this.sending.setName("sending-thread -" + this.toString());
-        this.sending.setDaemon(true);
-        this.sending.start();
+            this.sending = new Thread(this::runSending);
+            this.sending.setName("sending-thread -" + this.toString());
+            this.sending.setDaemon(true);
+            this.sending.start();
+        }
     }
 
+    @Override
     public String getId() {
         return processName + "-" + uuid;
     }
@@ -117,7 +144,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
     @Override
     public void subscribe(Object subscriber) {
         try {
-            subscribers.add(new EventSubscriberWrapper(subscriber));
+            subscribers.add(new EventSubscriberWrapper(this, subscriber));
         } catch (AnnotationError annotationError) {
             annotationError.printStackTrace();
         }
@@ -128,16 +155,31 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
         subscribers.remove(subscriber);
     }
 
+    public void addListener(IEventListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener(IEventListener listener) {
+        listeners.remove(listener);
+    }
+
     private void sendLocal(Event event) {
+        synchronized (listeners) {
+            for (IEventListener listener : listeners) {
+                if (listener.onEvent(event)) return;
+            }
+        }
         synchronized (subscribers) {
             for (EventSubscriberWrapper eventSubscriberWrapper : subscribers) {
-                eventSubscriberWrapper.onEvent(this, event);
+                eventSubscriberWrapper.onEvent(event);
             }
         }
     }
 
     private void sendRemote(Event event) {
-        sendingQueue.offer(event);
+        if (this.address != null) {
+            sendingQueue.offer(event);
+        }
     }
 
     private void runConnecting() {

@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
@@ -11,9 +12,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Timer;
+
+import x.tools.framework.XUtils;
 import x.tools.framework.error.XError;
 import x.tools.framework.event.Event;
 import x.tools.framework.event.annotation.EventSubscriber;
+import x.tools.framework.event.annotation.SyncValue;
+import x.tools.framework.event.sync.SyncBooleanValue;
+import x.tools.framework.event.sync.SyncStringValue;
 import x.tools.framework.log.Loggable;
 
 import static x.tools.app.MainApplication.getXContext;
@@ -35,7 +42,6 @@ public class MainService extends Service implements Loggable {
         startForeground(R.id.NOTIFICATION_STATUS, notification);
     }
 
-
     public static void bootService(Context context) {
         context.startService(new Intent(context, MainService.class));
     }
@@ -46,7 +52,15 @@ public class MainService extends Service implements Loggable {
         updateNotification();
         getXContext().subscribe(this);
         info("onCreate");
+        new Handler().postDelayed(this::changeValue, XUtils.randomRange(100, 200));
     }
+
+
+    private void changeValue() {
+        Status.getInst().setStatus(XUtils.randomText(32));
+        new Handler().postDelayed(this::changeValue, XUtils.randomRange(100, 200));
+    }
+
 
     @Override
     public void onDestroy() {

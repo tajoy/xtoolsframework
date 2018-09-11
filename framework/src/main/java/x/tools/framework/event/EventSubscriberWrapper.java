@@ -5,10 +5,17 @@ import android.text.TextUtils;
 import org.apache.commons.lang3.ClassUtils;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -16,6 +23,10 @@ import x.tools.framework.error.AnnotationError;
 import x.tools.framework.event.annotation.AllEventSubscriber;
 import x.tools.framework.event.annotation.ErrorSubscriber;
 import x.tools.framework.event.annotation.EventSubscriber;
+import x.tools.framework.event.annotation.OnSyncValueUpdate;
+import x.tools.framework.event.annotation.SyncValue;
+import x.tools.framework.event.sync.AbstractSyncValue;
+import x.tools.framework.event.sync.ISyncUpdateCallback;
 import x.tools.framework.log.Loggable;
 
 class EventSubscriberWrapper implements Loggable {
@@ -31,7 +42,7 @@ class EventSubscriberWrapper implements Loggable {
         }
 
         private boolean isFiltered(Event event) {
-            if (!Objects.equals(event.getName(), this.name)) {
+            if (!"*".equals(this.name) && !Objects.equals(event.getName(), this.name)) {
                 return true;
             }
             if (!TextUtils.isEmpty(this.source)) {
@@ -49,6 +60,7 @@ class EventSubscriberWrapper implements Loggable {
     private final List<Method> allEventSubscriberList = new ArrayList<>();
     private final List<Method> errorEventSubscriberList = new ArrayList<>();
     private final List<SubscriberInfo> subscriberInfoList = new ArrayList<>();
+    private final Map<String, AbstractSyncValue> syncValueMap = new HashMap<>();
 
     private static void checkMethod(Method method, Class... types) throws AnnotationError {
         Class[] parameterTypes = method.getParameterTypes();
@@ -74,10 +86,58 @@ class EventSubscriberWrapper implements Loggable {
         }
     }
 
-    EventSubscriberWrapper(Object subscriber) throws AnnotationError {
+    private final IEventBus eventBus;
+
+    EventSubscriberWrapper(IEventBus eventBus, Object subscriber) throws AnnotationError {
+        this.eventBus = eventBus;
         this.subscriber = new AtomicReference<>(subscriber);
         Class cls = subscriber.getClass();
-        Method[] methods = cls.getDeclaredMethods();
+
+        Field[] fields = cls.getFields();
+        for (Field field : fields) {
+            Annotation[] annotations = field.getAnnotations();
+            for (Annotation annotation : annotations) {
+                if (annotation instanceof SyncValue) {
+                    SyncValue sv = (SyncValue) annotation;
+                    try {
+                        Class fieldClass = field.getType();
+                        if (!ClassUtils.isAssignable(fieldClass, AbstractSyncValue.class)) {
+                            throw new AnnotationError(
+                                    String.format(
+                                            "expected %s, but got %s",
+                                            AbstractSyncValue.class,
+                                            fieldClass
+                                    )
+                            );
+                        }
+                        Constructor<? extends AbstractSyncValue> constructor = fieldClass.getConstructors()[0];
+                        Class dataClass = constructor.getParameterTypes()[3];
+                        String id = sv.id();
+                        Object data;
+                        try {
+                            if (ClassUtils.isAssignable(dataClass, String.class)) {
+                                data = sv.value();
+                            } else {
+                                data = dataClass.getMethod("valueOf", String.class).invoke(dataClass, sv.value());
+                            }
+                        } catch (Exception e) {
+                            throw new AnnotationError(e);
+                        }
+
+                        if (TextUtils.isEmpty(id)) {
+                            id = cls.getName() + "." + field.getName();
+                        }
+                        AbstractSyncValue syncValue = constructor.newInstance(eventBus, id, data);
+                        field.set(subscriber, syncValue);
+                        this.syncValueMap.put(field.getName(), syncValue);
+                    } catch (Exception e) {
+                        throw new AnnotationError(e);
+                    }
+                }
+            }
+        }
+
+        Method[] methods = cls.getMethods();
         for (Method method : methods) {
             Annotation[] annotations = method.getAnnotations();
             for (Annotation annotation : annotations) {
@@ -94,22 +154,54 @@ class EventSubscriberWrapper implements Loggable {
                     EventSubscriber es = (EventSubscriber) annotation;
                     subscriberInfoList.add(new SubscriberInfo(method, es.name(), es.source()));
                 }
+
+                // SyncValue 处理完了, 监听注解才能处理
+                if (annotation instanceof OnSyncValueUpdate) {
+                    OnSyncValueUpdate onSyncValueUpdate = (OnSyncValueUpdate) annotation;
+                    for (Map.Entry<String, AbstractSyncValue> entry : syncValueMap.entrySet()) {
+                        Class fieldClass;
+                        try {
+                            fieldClass = cls.getField(entry.getKey()).getType();
+                        } catch (NoSuchFieldException e) {
+                            throw new AnnotationError(e);
+                        }
+                        if (!TextUtils.isEmpty(onSyncValueUpdate.field())
+                                && !entry.getKey().equals(onSyncValueUpdate.field())) {
+                            continue;
+                        }
+                        Constructor<? extends AbstractSyncValue> constructor = fieldClass.getConstructors()[0];
+                        Class dataClass = constructor.getParameterTypes()[3];
+                        checkMethod(method, AbstractSyncValue.class, dataClass, dataClass);
+                        entry.getValue().setUpdateCallback(new ISyncUpdateCallback() {
+                            @Override
+                            public <T> void onUpdate(AbstractSyncValue<T> syncValue, T oldValue, T newValue) throws Throwable {
+                                method.invoke(subscriber, syncValue, oldValue, newValue);
+                            }
+                        });
+                    }
+                }
+
             }
         }
+
     }
 
-    public void onEvent(IEventBus eventBus, Event event) {
+    public synchronized void onEvent(Event event) {
         Object s = subscriber.get();
         if (s == null) {
             eventBus.unsubscribe(this);
             return;
         }
 
+        for (AbstractSyncValue syncValue : syncValueMap.values()) {
+            if (syncValue.onEvent(event)) return;
+        }
+
         for (Method method : allEventSubscriberList) {
             try {
                 method.invoke(s, event);
             } catch (Throwable t) {
-                onError(eventBus, event, t);
+                onError(event, t);
             }
         }
 
@@ -119,12 +211,12 @@ class EventSubscriberWrapper implements Loggable {
                     continue;
                 info.onEvent(s, event);
             } catch (Throwable t) {
-                onError(eventBus, event, t);
+                onError(event, t);
             }
         }
     }
 
-    public void onError(IEventBus eventBus, Event event, Throwable throwable) {
+    public synchronized void onError(Event event, Throwable throwable) {
         Object s = subscriber.get();
         if (s == null) {
             eventBus.unsubscribe(this);

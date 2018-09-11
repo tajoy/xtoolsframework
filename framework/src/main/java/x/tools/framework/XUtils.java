@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Callable;
 
 public final class XUtils {
@@ -65,4 +66,33 @@ public final class XUtils {
         return processName;
     }
 
+
+    private static final Random random = new Random();
+
+    public static int randomRange(int min, int max) {
+        if (max <= min) throw new AssertionError("assert fail: max > min");
+        int r = random.nextInt();
+        return min + (Math.abs(r) % (max - min));
+    }
+
+    public static float randomRange(float min, float max) {
+        if (max <= min) throw new AssertionError("assert fail: max > min");
+        float r = random.nextFloat();
+        return min + (Math.abs(r) % (max - min));
+    }
+
+
+    private static final String DEFAULT_RANDOM_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
+
+    public static String randomText(int length) {
+        return randomText(DEFAULT_RANDOM_CHARACTERS, length);
+    }
+
+    public static String randomText(String space, int length) {
+        final Random random = new Random();
+        final StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; ++i)
+            sb.append(space.charAt(random.nextInt(space.length())));
+        return sb.toString();
+    }
 }

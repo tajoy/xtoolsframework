@@ -32,6 +32,7 @@ import x.tools.framework.error.XError;
 import x.tools.framework.event.Event;
 import x.tools.framework.event.IEventBus;
 import x.tools.framework.event.EventBus;
+import x.tools.framework.event.IEventListener;
 import x.tools.framework.event.annotation.AllEventSubscriber;
 import x.tools.framework.event.json.IJsonSerializer;
 import x.tools.framework.log.DefaultLoggerFactory;
@@ -461,6 +462,16 @@ public final class XContext extends ContextWrapper implements Loggable, IEventBu
     }
 
     @Override
+    public void addListener(IEventListener listener) {
+        EventBus.addListener(listener);
+    }
+
+    @Override
+    public void removeListener(IEventListener listener) {
+        EventBus.removeListener(listener);
+    }
+
+    @Override
     public void subscribe(Object subscriber) {
         EventBus.subscribe(subscriber);
     }
@@ -468,6 +479,11 @@ public final class XContext extends ContextWrapper implements Loggable, IEventBu
     @Override
     public void unsubscribe(Object subscriber) {
         EventBus.unsubscribe(subscriber);
+    }
+
+    @Override
+    public String getId() {
+        return EventBus.getId();
     }
 
     @Override

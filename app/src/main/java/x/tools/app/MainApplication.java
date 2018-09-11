@@ -33,6 +33,7 @@ public class MainApplication extends Application {
                         .build();
                 xContext.copyAssetsToScriptDir("script");
                 xContext.initialize();
+                xContext.subscribe(Status.getInst());
             } catch (Exception e) {
                 e.printStackTrace();
             }
