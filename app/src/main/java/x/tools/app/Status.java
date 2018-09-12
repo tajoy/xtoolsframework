@@ -1,11 +1,9 @@
 package x.tools.app;
 
-import java.util.concurrent.TimeoutException;
-
-import x.tools.framework.event.annotation.OnSyncValueUpdate;
-import x.tools.framework.event.annotation.SyncValue;
-import x.tools.framework.event.sync.AbstractSyncValue;
-import x.tools.framework.event.sync.SyncStringValue;
+import x.tools.eventbus.annotation.OnSyncValueUpdate;
+import x.tools.eventbus.annotation.SyncValue;
+import x.tools.eventbus.sync.AbstractSyncValue;
+import x.tools.eventbus.sync.SyncStringValue;
 import x.tools.framework.log.Loggable;
 
 public class Status implements Loggable {

@@ -1,7 +1,6 @@
 package x.tools.app;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,29 +8,13 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import x.tools.framework.XContext;
 import x.tools.framework.XStatus;
 import x.tools.framework.XUtils;
-import x.tools.framework.api.image.ImageApi;
-import x.tools.framework.api.screencap.ScreencapApi;
 import x.tools.framework.error.XError;
-import x.tools.framework.event.Event;
-import x.tools.framework.event.IEventListener;
-import x.tools.framework.event.annotation.EventSubscriber;
-import x.tools.framework.event.annotation.SyncValue;
-import x.tools.framework.event.sync.SyncStringValue;
 import x.tools.framework.log.Loggable;
-import x.tools.framework.script.lua.LuaScript;
 
 import static x.tools.app.MainApplication.getXContext;
 

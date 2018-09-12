@@ -1,1 +1,1 @@
-include ':app', ':framework', ':xposed', ':accessibility', ':image', ':lua', ':screencap', ':ocr', ':ime'
+include ':app', ':framework', ':xposed', ':accessibility', ':image', ':lua', ':screencap', ':ocr', ':ime', ':eventbus'
