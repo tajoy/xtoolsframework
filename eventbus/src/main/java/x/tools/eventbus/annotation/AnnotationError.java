@@ -1,6 +1,6 @@
-package x.tools.eventbus;
+package x.tools.eventbus.annotation;
 
-class AnnotationError extends Exception {
+public class AnnotationError extends Exception {
     public AnnotationError() {
     }
 

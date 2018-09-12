@@ -27,7 +27,7 @@ import java.util.concurrent.SynchronousQueue;
 import x.tools.eventbus.Event;
 import x.tools.eventbus.EventBus;
 import x.tools.eventbus.IEventBus;
-import x.tools.eventbus.IEventListener;
+import x.tools.eventbus.IEventInterpolator;
 import x.tools.eventbus.annotation.AllEventSubscriber;
 import x.tools.eventbus.json.IJsonSerializer;
 import x.tools.framework.api.AbstractApi;
@@ -462,13 +462,13 @@ public final class XContext extends ContextWrapper implements Loggable, IEventBu
     }
 
     @Override
-    public void addListener(IEventListener listener) {
-        EventBus.addListener(listener);
+    public void addInterpolator(IEventInterpolator listener) {
+        EventBus.addInterpolator(listener);
     }
 
     @Override
-    public void removeListener(IEventListener listener) {
-        EventBus.removeListener(listener);
+    public void removeInterpolator(IEventInterpolator interpolator) {
+        EventBus.removeInterpolator(interpolator);
     }
 
     @Override
@@ -484,6 +484,11 @@ public final class XContext extends ContextWrapper implements Loggable, IEventBu
     @Override
     public String getId() {
         return EventBus.getId();
+    }
+
+    @Override
+    public void trigger(Event event) {
+        EventBus.trigger(event);
     }
 
     @Override

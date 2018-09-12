@@ -10,9 +10,8 @@ import java.util.concurrent.TimeoutException;
 import x.tools.eventbus.Event;
 import x.tools.eventbus.EventBus;
 import x.tools.eventbus.IEventBus;
-import x.tools.eventbus.IEventListener;
 
-public abstract class AbstractSyncValue<T> implements IEventListener {
+public abstract class AbstractSyncValue<T> {
     private static final String TYPE_SYNC = "sync";
     private static final String TYPE_CHANGED = "changed";
 
@@ -163,7 +162,6 @@ public abstract class AbstractSyncValue<T> implements IEventListener {
         }
     }
 
-    @Override
     public boolean onEvent(Event event) {
         if (!event.getName().equals(this.id)) return false;
         boolean isLocal = Objects.equals(event.getSource(), this.eventBus.getId());

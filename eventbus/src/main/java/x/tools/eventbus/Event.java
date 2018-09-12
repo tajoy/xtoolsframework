@@ -103,8 +103,12 @@ public class Event implements java.io.Serializable {
         this.preload = preload;
     }
 
+    private JSONObject cacheData = null;
     public JSONObject getData() throws JSONException {
-        return new JSONObject(preload);
+        if (cacheData == null) {
+            cacheData = new JSONObject(preload);
+        }
+        return cacheData;
     }
 
     public Object getData(ClassLoader classLoader) {

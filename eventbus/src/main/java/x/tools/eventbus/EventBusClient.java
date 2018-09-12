@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import x.tools.eventbus.annotation.AnnotationError;
 import x.tools.eventbus.log.Loggable;
 
 import static java.util.Collections.newSetFromMap;
@@ -27,9 +28,9 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
             )
     );
 
-    private static class EventListenerComparator implements Comparator<IEventListener> {
+    private static class EventListenerComparator implements Comparator<IEventInterpolator> {
         @Override
-        public int compare(IEventListener o1, IEventListener o2) {
+        public int compare(IEventInterpolator o1, IEventInterpolator o2) {
             if (o1 == o2) {
                 return 0;
             }
@@ -43,7 +44,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
         }
     }
 
-    private final SortedSet<IEventListener> listeners = new ConcurrentSkipListSet<>(new EventListenerComparator());
+    private final SortedSet<IEventInterpolator> interpolators = new ConcurrentSkipListSet<>(new EventListenerComparator());
 
     private final String uuid;
     private final String processName;
@@ -84,6 +85,12 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
     @Override
     public String getId() {
         return processName + "-" + uuid;
+    }
+
+    @Override
+    public void trigger(Event event) {
+        sendLocal(event);
+        sendRemote(event);
     }
 
     @Override
@@ -150,17 +157,17 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
         subscribers.remove(subscriber);
     }
 
-    public void addListener(IEventListener listener) {
-        listeners.add(listener);
+    public void addInterpolator(IEventInterpolator listener) {
+        interpolators.add(listener);
     }
 
-    public void removeListener(IEventListener listener) {
-        listeners.remove(listener);
+    public void removeInterpolator(IEventInterpolator listener) {
+        interpolators.remove(listener);
     }
 
     private void sendLocal(Event event) {
-        synchronized (listeners) {
-            for (IEventListener listener : listeners) {
+        synchronized (interpolators) {
+            for (IEventInterpolator listener : interpolators) {
                 if (listener.onEvent(event)) return;
             }
         }

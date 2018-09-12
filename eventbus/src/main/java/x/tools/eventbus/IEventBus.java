@@ -1,26 +1,30 @@
 package x.tools.eventbus;
 
 
+import x.tools.eventbus.annotation.AllEventSubscriber;
+import x.tools.eventbus.annotation.ErrorSubscriber;
+import x.tools.eventbus.annotation.EventSubscriber;
+
 public interface IEventBus extends IEventSender {
 
     /**
-     * 添加事件监听器, 监听器可以拦截事件的分发
-     * 参见: IEventListener
+     * 添加事件拦截器, 监听器可以拦截事件的分发
+     * 参见: {@link IEventInterpolator}
      *
-     * @param listener 事件监听器
+     * @param interpolator 事件监听器
      */
-    void addListener(IEventListener listener);
+    void addInterpolator(IEventInterpolator interpolator);
 
     /**
-     * 移除事件监听器
+     * 移除事件拦截器
      *
-     * @param listener 事件监听器
+     * @param interpolator 事件监听器
      */
-    void removeListener(IEventListener listener);
+    void removeInterpolator(IEventInterpolator interpolator);
 
     /**
      * 订阅事件, 订阅对象使用注解来标注需要接受的事件的方法
-     * 参见: AllEventSubscriber, EventSubscriber, ErrorSubscriber
+     * 参见: {@link AllEventSubscriber}, {@link EventSubscriber}, {@link ErrorSubscriber}
      *
      * @param subscriber 订阅事件的对象
      */

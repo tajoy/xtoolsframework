@@ -7,19 +7,26 @@ import android.os.Looper;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import x.tools.eventbus.annotation.ThreadMode;
 import x.tools.eventbus.json.FastJsonSerializer;
 import x.tools.eventbus.json.GsonSerializer;
 import x.tools.eventbus.json.IJsonSerializer;
+import x.tools.eventbus.log.DefaultLoggerFactory;
 import x.tools.eventbus.log.ILoggerFactory;
 import x.tools.eventbus.log.Loggable;
 
 public class EventBus implements Loggable {
-    private EventBus(){}
+    private EventBus() {
+    }
+
     private static EventBus INSTANCE = new EventBus();
 
     private static ClassLoader classLoader = ClassLoader.getSystemClassLoader();
@@ -28,7 +35,6 @@ public class EventBus implements Loggable {
     private static EventBusClient client = null;
     private static Context context = null;
     private static Handler mainHandler = null;
-    private static Handler asyncHandler = null;
     private static boolean isServer = false;
 
     public static ClassLoader getClassLoader() {
@@ -70,6 +76,7 @@ public class EventBus implements Loggable {
 
     /**
      * 初始化事件总线服务器, 为事件总线提供IPC服务
+     *
      * @param address unix 本地套接字地址
      * @return 是否初始化成功
      * @throws IOException 监听异常
@@ -83,6 +90,8 @@ public class EventBus implements Loggable {
     }
 
     private static final Map<String, Looper> looperMap = new HashMap<>();
+    private static final Map<String, Handler> handlerMap = new HashMap<>();
+
     private static Looper getLooper(String looperName) {
         Looper looper;
         synchronized (looperMap) {
@@ -121,8 +130,33 @@ public class EventBus implements Loggable {
             synchronized (looperMap) {
                 looperMap.put(looperName, looper);
             }
+            synchronized (handlerMap) {
+                handlerMap.remove(looperName);
+            }
         }
         return looper;
+    }
+
+    private static Handler getLooperHandler(String looperName) {
+        Handler handler;
+        Looper looper = getLooper(looperName);
+
+        synchronized (handlerMap) {
+            handler = handlerMap.get(looperName);
+        }
+
+        if (handler == null) {
+            handler = new Handler(looper);
+            synchronized (handlerMap) {
+                handlerMap.put(looperName, handler);
+            }
+        }
+
+        return handler;
+    }
+
+    private static Handler getAsyncHandler(int index) {
+        return getLooperHandler("EventBus-Async-Thread-" + index);
     }
 
     /**
@@ -139,7 +173,6 @@ public class EventBus implements Loggable {
         EventBus.context = context;
         EventBus.client = new EventBusClient(address);
         EventBus.mainHandler = new Handler(context.getMainLooper());
-        EventBus.asyncHandler = new Handler(getLooper("EventBus-Async-Thread"));
         return true;
     }
 
@@ -147,14 +180,14 @@ public class EventBus implements Loggable {
         return client;
     }
 
-    public static void addListener(IEventListener listener) {
+    public static void addInterpolator(IEventInterpolator interpolator) {
         if (client == null) throw new AssertionError("client == null");
-        client.addListener(listener);
+        client.addInterpolator(interpolator);
     }
 
-    public static void removeListener(IEventListener listener) {
+    public static void removeInterpolator(IEventInterpolator interpolator) {
         if (client == null) throw new AssertionError("client == null");
-        client.removeListener(listener);
+        client.removeInterpolator(interpolator);
     }
 
     public static void subscribe(Object subscriber) {
@@ -165,6 +198,11 @@ public class EventBus implements Loggable {
     public static void unsubscribe(Object subscriber) {
         if (client == null) throw new AssertionError("client == null");
         client.unsubscribe(subscriber);
+    }
+
+    public static void trigger(Event event) {
+        if (client == null) throw new AssertionError("client == null");
+        client.trigger(event);
     }
 
     public static void trigger(String name) {
@@ -191,13 +229,29 @@ public class EventBus implements Loggable {
         return client.getId();
     }
 
+    private static final Random random = new Random();
+
+
     public static void callIn(ThreadMode mode, Runnable runnable) {
         switch (mode) {
             case POSTING:
                 runnable.run();
                 break;
             case ASYNC:
-                asyncHandler.post(runnable);
+                Looper myLooper = Looper.myLooper();
+                Handler asyncHandler_1 = getAsyncHandler(1);
+                Handler asyncHandler_2 = getAsyncHandler(2);
+                if (asyncHandler_1.getLooper().equals(myLooper)) {
+                    asyncHandler_2.post(runnable);
+                } else if (asyncHandler_2.getLooper().equals(myLooper)) {
+                    asyncHandler_1.post(runnable);
+                } else {
+                    if (random.nextBoolean()) {
+                        asyncHandler_1.post(runnable);
+                    } else {
+                        asyncHandler_2.post(runnable);
+                    }
+                }
                 break;
             case MAIN:
                 mainHandler.post(runnable);
@@ -205,15 +259,37 @@ public class EventBus implements Loggable {
         }
     }
 
+    private static ILoggerFactory loggerFactory = new DefaultLoggerFactory();
+
     public static ILoggerFactory getLoggerFactory() {
-        return null;
+        return loggerFactory;
+    }
+
+    public static void setLoggerFactory(ILoggerFactory loggerFactory) {
+        EventBus.loggerFactory = loggerFactory;
     }
 
     public static String getProcessName(int pid) {
-        return null;
+        String processName;
+        String pidStr = String.valueOf(pid);
+        try {
+            File file = new File("/proc/" + pidStr + "/cmdline");
+            BufferedReader mBufferedReader = new BufferedReader(new FileReader(file));
+            processName = mBufferedReader.readLine().trim();
+            mBufferedReader.close();
+            return processName;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
+    private static String processName = null;
+
     public static String getProcessName() {
-        return null;
+        if (processName == null) {
+            int pid = android.os.Process.myPid();
+            processName = getProcessName(pid);
+        }
+        return processName;
     }
 }

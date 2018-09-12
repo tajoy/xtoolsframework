@@ -1,9 +1,9 @@
 package x.tools.eventbus;
 
-public interface IEventListener extends Comparable<IEventListener> {
+public interface IEventInterpolator extends Comparable<IEventInterpolator> {
 
     /**
-     * 决定监听器优先级排序, 值越高, 越先处理
+     * 决定时间处理器优先级排序, 值越高, 越先处理
      * @return 优先值
      */
     default int priority() {
@@ -11,7 +11,7 @@ public interface IEventListener extends Comparable<IEventListener> {
     }
 
     @Override
-    default int compareTo(IEventListener o) {
+    default int compareTo(IEventInterpolator o) {
         if (this.priority() > o.priority()) {
             return -1;
         } else if (this.priority() == o.priority()) {

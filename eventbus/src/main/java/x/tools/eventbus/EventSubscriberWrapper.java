@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+import x.tools.eventbus.annotation.AnnotationError;
 import x.tools.eventbus.log.Loggable;
 import x.tools.eventbus.annotation.AllEventSubscriber;
 import x.tools.eventbus.annotation.ErrorSubscriber;

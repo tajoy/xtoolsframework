@@ -11,6 +11,12 @@ public interface IEventSender {
     String getId();
 
     /**
+     * 触发事件
+     * @param event 事件
+     */
+    void trigger(Event event);
+
+    /**
      * 触发事件, 无数据
      * @param name 事件名称
      */
