@@ -30,8 +30,8 @@ import x.tools.framework.error.BuilderError;
 import x.tools.framework.error.InitializeError;
 import x.tools.framework.error.XError;
 import x.tools.framework.event.Event;
-import x.tools.framework.event.IEventBus;
 import x.tools.framework.event.EventBus;
+import x.tools.framework.event.IEventBus;
 import x.tools.framework.event.IEventListener;
 import x.tools.framework.event.annotation.AllEventSubscriber;
 import x.tools.framework.event.json.IJsonSerializer;
@@ -217,7 +217,7 @@ public final class XContext extends ContextWrapper implements Loggable, IEventBu
 
         try {
             EventBus.getJsonSerializer();
-            EventBus.initClient(getEventBusAddress());
+            EventBus.initClient(this.getBaseContext(), getEventBusAddress());
             if (isEventBusServerProcess()) {
                 EventBus.initServer(getEventBusAddress());
             }

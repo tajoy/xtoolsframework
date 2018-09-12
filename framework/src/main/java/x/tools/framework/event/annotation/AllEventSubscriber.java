@@ -8,4 +8,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface AllEventSubscriber {
+    /**
+     * 分发事件的线程模式, 参见: {@link ThreadMode}
+     */
+    ThreadMode threadMode() default ThreadMode.POSTING;
 }

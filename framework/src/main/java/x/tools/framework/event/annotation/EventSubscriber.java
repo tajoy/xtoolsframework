@@ -9,6 +9,19 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface EventSubscriber {
+
+    /**
+     * 需要匹配的事件名称
+     */
     String name();
-    String source() default ""; // empty string as match any source
+
+    /**
+     * 需要匹配的事件源, 一般是进程ID. 空值代表匹配所有.
+     */
+    String source() default "";
+
+    /**
+     * 分发事件的线程模式, 参见: {@link ThreadMode}
+     */
+    ThreadMode threadMode() default ThreadMode.POSTING;
 }

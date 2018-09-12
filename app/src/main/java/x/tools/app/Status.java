@@ -1,5 +1,7 @@
 package x.tools.app;
 
+import java.util.concurrent.TimeoutException;
+
 import x.tools.framework.event.annotation.OnSyncValueUpdate;
 import x.tools.framework.event.annotation.SyncValue;
 import x.tools.framework.event.sync.AbstractSyncValue;
@@ -15,9 +17,8 @@ public class Status implements Loggable {
         return INSTANCE;
     }
 
-
     @SyncValue(value = "ok")
-    private SyncStringValue status;
+    public SyncStringValue status;
 
     @OnSyncValueUpdate(field = "status")
     public void onStatusUpdate(AbstractSyncValue syncValue, String oldValue, String newValue) {
@@ -25,12 +26,17 @@ public class Status implements Loggable {
     }
 
     public String getStatus() {
-        if (status == null) return null;
+        if (this.status == null) return null;
         return status.getValue();
     }
 
     public void setStatus(String status) {
-        if (status == null) return;
-        this.status.setValue(status);
+        if (this.status == null) return;
+        this.status.setValueForce(status);
+//        try {
+//            this.status.setValue(status);
+//        } catch (TimeoutException | InterruptedException e) {
+//            e.printStackTrace();
+//        }
     }
 }

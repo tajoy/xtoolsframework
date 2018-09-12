@@ -1,19 +1,17 @@
 package x.tools.framework.event.annotation;
 
-import org.apache.commons.lang3.ObjectUtils;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.concurrent.Callable;
-import java.util.function.Supplier;
+
+import x.tools.framework.event.sync.AbstractSyncValue;
 
 
 /**
- * 该注解用于字段上, 字段类型为 x.tools.framework.event.sync.SyncValue 的子类
+ * 该注解用于字段上, 字段类型为 {@link AbstractSyncValue} 的子类
  * 自动生成 ID, 并添加到事件总线上接收远端同步事件
- * x.tools.framework.event.sync.SyncValue 设置时自动根据 ID 发送同步事件
+ * {@link AbstractSyncValue} 设置时自动根据 ID 发送同步事件
  * 只支持常用类型: boolean, byte, int, long, float, double, string
  */
 @Retention(RetentionPolicy.RUNTIME)

@@ -7,10 +7,7 @@ import org.apache.commons.lang3.ClassUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,20 +22,32 @@ import x.tools.framework.event.annotation.ErrorSubscriber;
 import x.tools.framework.event.annotation.EventSubscriber;
 import x.tools.framework.event.annotation.OnSyncValueUpdate;
 import x.tools.framework.event.annotation.SyncValue;
+import x.tools.framework.event.annotation.ThreadMode;
 import x.tools.framework.event.sync.AbstractSyncValue;
 import x.tools.framework.event.sync.ISyncUpdateCallback;
 import x.tools.framework.log.Loggable;
 
 class EventSubscriberWrapper implements Loggable {
+    private interface OnError {
+        void call(Throwable throwable);
+    }
+
     private static class SubscriberInfo {
         private Method method;
         private String name;
         private String source;
+        private ThreadMode mode;
 
-        private SubscriberInfo(Method method, String name, String source) {
+        private SubscriberInfo(Method method, ThreadMode mode) {
+            this.method = method;
+            this.mode = mode;
+        }
+
+        private SubscriberInfo(Method method, String name, String source, ThreadMode mode) {
             this.method = method;
             this.name = name;
             this.source = source;
+            this.mode = mode;
         }
 
         private boolean isFiltered(Event event) {
@@ -51,14 +60,30 @@ class EventSubscriberWrapper implements Loggable {
             return false;
         }
 
-        private void onEvent(Object s, Event event) throws Throwable {
-            method.invoke(s, event);
+        private void onEvent(Object s, Event event, OnError onError) {
+            EventBus.callIn(mode, () -> {
+                try {
+                    method.invoke(s, event);
+                } catch (Throwable t) {
+                    onError.call(t);
+                }
+            });
+        }
+
+        private void onError(Object s, Event event, Throwable throwable, OnError onError) {
+            EventBus.callIn(mode, () -> {
+                try {
+                    method.invoke(s, event, throwable);
+                } catch (Throwable t) {
+                    onError.call(t);
+                }
+            });
         }
     }
 
     private final AtomicReference<Object> subscriber;
-    private final List<Method> allEventSubscriberList = new ArrayList<>();
-    private final List<Method> errorEventSubscriberList = new ArrayList<>();
+    private final List<SubscriberInfo> allEventSubscriberList = new ArrayList<>();
+    private final List<SubscriberInfo> errorEventSubscriberList = new ArrayList<>();
     private final List<SubscriberInfo> subscriberInfoList = new ArrayList<>();
     private final Map<String, AbstractSyncValue> syncValueMap = new HashMap<>();
 
@@ -88,12 +113,38 @@ class EventSubscriberWrapper implements Loggable {
 
     private final IEventBus eventBus;
 
+    private static Field[] getAllFields(Class cls) {
+        List<Field> fieldList = new ArrayList<>();
+
+        do {
+            fieldList.addAll(Arrays.asList(cls.getDeclaredFields()));
+            cls = cls.getSuperclass();
+        } while (!cls.equals(Object.class));
+
+        return fieldList.toArray(new Field[fieldList.size()]);
+    }
+
+    private static Method[] getAllMethods(Class cls) {
+        List<Method> methodList = new ArrayList<>();
+        do {
+            methodList.addAll(Arrays.asList(cls.getDeclaredMethods()));
+            cls = cls.getSuperclass();
+        } while (!cls.equals(Object.class));
+
+        return methodList.toArray(new Method[methodList.size()]);
+
+    }
+
+
     EventSubscriberWrapper(IEventBus eventBus, Object subscriber) throws AnnotationError {
         this.eventBus = eventBus;
         this.subscriber = new AtomicReference<>(subscriber);
         Class cls = subscriber.getClass();
 
-        Field[] fields = cls.getFields();
+        Field[] fields = getAllFields(cls);
+        Method[] methods = getAllMethods(cls);
+
+
         for (Field field : fields) {
             Annotation[] annotations = field.getAnnotations();
             for (Annotation annotation : annotations) {
@@ -111,7 +162,7 @@ class EventSubscriberWrapper implements Loggable {
                             );
                         }
                         Constructor<? extends AbstractSyncValue> constructor = fieldClass.getConstructors()[0];
-                        Class dataClass = constructor.getParameterTypes()[3];
+                        Class dataClass = constructor.getParameterTypes()[2];
                         String id = sv.id();
                         Object data;
                         try {
@@ -128,6 +179,7 @@ class EventSubscriberWrapper implements Loggable {
                             id = cls.getName() + "." + field.getName();
                         }
                         AbstractSyncValue syncValue = constructor.newInstance(eventBus, id, data);
+                        field.setAccessible(true);
                         field.set(subscriber, syncValue);
                         this.syncValueMap.put(field.getName(), syncValue);
                     } catch (Exception e) {
@@ -137,22 +189,38 @@ class EventSubscriberWrapper implements Loggable {
             }
         }
 
-        Method[] methods = cls.getMethods();
         for (Method method : methods) {
             Annotation[] annotations = method.getAnnotations();
             for (Annotation annotation : annotations) {
                 if (annotation instanceof AllEventSubscriber) {
                     checkMethod(method, Event.class);
-                    allEventSubscriberList.add(method);
+                    allEventSubscriberList.add(
+                            new SubscriberInfo(
+                                    method,
+                                    ((AllEventSubscriber) annotation).threadMode()
+                            )
+                    );
                 }
                 if (annotation instanceof ErrorSubscriber) {
                     checkMethod(method, Event.class, Throwable.class);
-                    errorEventSubscriberList.add(method);
+                    errorEventSubscriberList.add(
+                            new SubscriberInfo(
+                                    method,
+                                    ((AllEventSubscriber) annotation).threadMode()
+                            )
+                    );
                 }
                 if (annotation instanceof EventSubscriber) {
                     checkMethod(method, Event.class);
                     EventSubscriber es = (EventSubscriber) annotation;
-                    subscriberInfoList.add(new SubscriberInfo(method, es.name(), es.source()));
+                    subscriberInfoList.add(
+                            new SubscriberInfo(
+                                    method,
+                                    es.name(),
+                                    es.source(),
+                                    es.threadMode()
+                            )
+                    );
                 }
 
                 // SyncValue 处理完了, 监听注解才能处理
@@ -170,9 +238,14 @@ class EventSubscriberWrapper implements Loggable {
                             continue;
                         }
                         Constructor<? extends AbstractSyncValue> constructor = fieldClass.getConstructors()[0];
-                        Class dataClass = constructor.getParameterTypes()[3];
+                        Class dataClass = constructor.getParameterTypes()[2];
                         checkMethod(method, AbstractSyncValue.class, dataClass, dataClass);
                         entry.getValue().setUpdateCallback(new ISyncUpdateCallback() {
+                            @Override
+                            public ThreadMode threadMode() {
+                                return onSyncValueUpdate.threadMode();
+                            }
+
                             @Override
                             public <T> void onUpdate(AbstractSyncValue<T> syncValue, T oldValue, T newValue) throws Throwable {
                                 method.invoke(subscriber, syncValue, oldValue, newValue);
@@ -194,25 +267,18 @@ class EventSubscriberWrapper implements Loggable {
         }
 
         for (AbstractSyncValue syncValue : syncValueMap.values()) {
+            // 内部会自己分发到指定线程
             if (syncValue.onEvent(event)) return;
         }
 
-        for (Method method : allEventSubscriberList) {
-            try {
-                method.invoke(s, event);
-            } catch (Throwable t) {
-                onError(event, t);
-            }
+        for (SubscriberInfo info : allEventSubscriberList) {
+            info.onEvent(s, event, (t) -> onError(event, t));
         }
 
         for (SubscriberInfo info : subscriberInfoList) {
-            try {
-                if (info.isFiltered(event))
-                    continue;
-                info.onEvent(s, event);
-            } catch (Throwable t) {
-                onError(event, t);
-            }
+            if (info.isFiltered(event))
+                continue;
+            info.onEvent(s, event, (t) -> onError(event, t));
         }
     }
 
@@ -223,12 +289,18 @@ class EventSubscriberWrapper implements Loggable {
             return;
         }
         if (errorEventSubscriberList.size() > 0) {
-            for (Method method : errorEventSubscriberList) {
-                try {
-                    method.invoke(s, event, throwable);
-                } catch (Throwable t) {
-                    t.printStackTrace();
-                }
+            for (SubscriberInfo info : errorEventSubscriberList) {
+                info.onError(
+                        s,
+                        event,
+                        throwable,
+                        (t) -> error(
+                                t,
+                                "Handle Error %s, %s got ERROR!",
+                                event,
+                                throwable
+                        )
+                );
             }
         } else {
             error(throwable, "Handle %s got ERROR!", event);

@@ -5,6 +5,7 @@ import org.json.JSONObject;
 
 import java.sql.Timestamp;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 
 import x.tools.framework.event.Event;
 import x.tools.framework.event.EventBus;
@@ -63,11 +64,13 @@ public abstract class AbstractSyncValue<T> implements IEventListener {
 
     private void onUpdate(T oldValue, T newValue) {
         if (this.updateCallback != null) {
-            try {
-                this.updateCallback.onUpdate(this, oldValue, newValue);
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
+            EventBus.callIn(this.updateCallback.threadMode(), () -> {
+                try {
+                    this.updateCallback.onUpdate(this, oldValue, newValue);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            });
         }
     }
 
@@ -79,7 +82,16 @@ public abstract class AbstractSyncValue<T> implements IEventListener {
         return timestamp;
     }
 
-    public void setValue(T value) {
+    private static long DEFAULT_TIMEOUT = 1000;
+    private static long DEFAULT_INTERVAL = 50;
+
+
+    /**
+     * 尝试设置新的值, 设置过程是异步的, 并不一定会马上生效, 也有可能设置失败
+     *
+     * @param value 要设置的值
+     */
+    public void trySetValue(T value) {
         synchronized (this) {
             if (Objects.equals(this.value, value))
                 return;
@@ -101,7 +113,53 @@ public abstract class AbstractSyncValue<T> implements IEventListener {
                 e.printStackTrace();
                 return;
             }
-            this.eventBus.triggerRaw(this.id, jsonObject);
+        }
+        this.eventBus.triggerRaw(this.id, jsonObject);
+    }
+
+    /**
+     * 设置为新的值, 并等待同步到该值
+     *
+     * @param value        要设置的值
+     * @param timeoutMills 等待同步的超时时间, 毫秒
+     * @throws TimeoutException 在一定时间内设置失败
+     */
+    public void setValue(T value, long timeoutMills) throws TimeoutException, InterruptedException {
+        long now = System.currentTimeMillis();
+        long begin = now;
+        do {
+            now = System.currentTimeMillis();
+            if (now > begin + timeoutMills) {
+                throw new TimeoutException();
+            }
+            trySetValue(value);
+            Thread.sleep(DEFAULT_INTERVAL);
+        } while (!Objects.equals(value, getValue()));
+    }
+
+    /**
+     * 设置为新的值, 并等待同步到该值, 默认等待 1 秒
+     *
+     * @param value 要设置的值
+     * @throws TimeoutException 在一定时间内设置失败
+     */
+    public void setValue(T value) throws TimeoutException, InterruptedException {
+        setValue(value, DEFAULT_TIMEOUT);
+    }
+
+    /**
+     * 强制设置为新的值, 并等待同步到该值, 无等待时间限制
+     * !!! 请谨慎使用
+     *
+     * @param value 要设置的值
+     */
+    public void setValueForce(T value) {
+        while (!Objects.equals(value, getValue())) {
+            trySetValue(value);
+            try {
+                Thread.sleep(DEFAULT_INTERVAL);
+            } catch (InterruptedException ignore) {
+            }
         }
     }
 
@@ -130,11 +188,13 @@ public abstract class AbstractSyncValue<T> implements IEventListener {
             // 主值, 负责管理是否更新
             if (isLocal) {
                 // 本地更新, 直接更新
-                synchronized (this) {
-                    this.lastTimeModified = when;
-                    this.value = to;
+                if (TYPE_CHANGED.equals(type)) {
+                    synchronized (this) {
+                        this.lastTimeModified = when;
+                        this.value = to;
+                    }
+                    onUpdate(from, to);
                 }
-                onUpdate(from, to);
             } else {
                 if (TYPE_CHANGED.equals(type)) {
                     // 远端请求更新, 比较条件进行更新
@@ -150,6 +210,7 @@ public abstract class AbstractSyncValue<T> implements IEventListener {
                     }
                     onUpdate(from, to);
                     try {
+                        jsonObject = new JSONObject(jsonObject.toString());
                         jsonObject.put(KEY_TYPE, TYPE_SYNC);
                         // 通知从值同步
                         this.eventBus.triggerRaw(this.id, jsonObject);
