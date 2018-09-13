@@ -9,4 +9,6 @@ public final class RpcConstants {
     public static final String KEY_PARAMETER_TYPES = "PARAMETER-TYPES";
     public static final String KEY_PARAMETERS = "PARAMETERS";
     public static final String KEY_ID = "ID";
+    public static final String KEY_RETURN = "RETURN";
+    public static final String KEY_THROWABLE = "THROWABLE";
 }

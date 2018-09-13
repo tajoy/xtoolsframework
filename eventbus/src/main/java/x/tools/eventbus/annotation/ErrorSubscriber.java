@@ -11,5 +11,5 @@ public @interface ErrorSubscriber {
     /**
      * 分发事件的线程模式, 参见: {@link ThreadMode}
      */
-    ThreadMode threadMode() default ThreadMode.POSTING;
+    ThreadMode threadMode() default ThreadMode.MAIN;
 }

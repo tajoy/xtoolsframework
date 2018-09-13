@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import x.tools.eventbus.annotation.AnnotationError;
+import x.tools.eventbus.annotation.ThreadMode;
 import x.tools.eventbus.log.Loggable;
 
 import static java.util.Collections.newSetFromMap;
@@ -166,16 +167,26 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
     }
 
     private void sendLocal(Event event) {
-        synchronized (interpolators) {
-            for (IEventInterpolator listener : interpolators) {
-                if (listener.onEvent(event)) return;
+        EventBus.callIn(ThreadMode.ASYNC, () -> {
+            synchronized (interpolators) {
+                for (IEventInterpolator interpolator : interpolators) {
+                    try {
+                        if (interpolator.onEvent(event)) return;
+                    } catch (Throwable t) {
+                        error(t, "error when sendLocal, interpolator: %s, event: %s", interpolator, event);
+                    }
+                }
             }
-        }
-        synchronized (subscribers) {
-            for (EventSubscriberWrapper eventSubscriberWrapper : subscribers) {
-                eventSubscriberWrapper.onEvent(event);
+            synchronized (subscribers) {
+                for (EventSubscriberWrapper eventSubscriberWrapper : subscribers) {
+                    try {
+                        eventSubscriberWrapper.onEvent(event);
+                    } catch (Throwable t) {
+                        error(t, "error when sendLocal, eventSubscriberWrapper: %s, event: %s", eventSubscriberWrapper, event);
+                    }
+                }
             }
-        }
+        });
     }
 
     private void sendRemote(Event event) {

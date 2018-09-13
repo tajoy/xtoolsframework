@@ -14,6 +14,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import x.tools.eventbus.annotation.ThreadMode;
 import x.tools.eventbus.json.FastJsonSerializer;
@@ -23,12 +27,13 @@ import x.tools.eventbus.log.DefaultLoggerFactory;
 import x.tools.eventbus.log.ILoggerFactory;
 import x.tools.eventbus.log.Loggable;
 
-public class EventBus implements Loggable {
+public class EventBus implements Loggable, ThreadFactory {
     private EventBus() {
     }
 
-    private static EventBus INSTANCE = new EventBus();
 
+    private final static EventBus INSTANCE = new EventBus();
+    private final static ExecutorService executorService = Executors.newCachedThreadPool(INSTANCE);
     private static ClassLoader classLoader = ClassLoader.getSystemClassLoader();
     private static IJsonSerializer jsonSerializer = null;
     private static EventBusServer server = null;
@@ -36,6 +41,18 @@ public class EventBus implements Loggable {
     private static Context context = null;
     private static Handler mainHandler = null;
     private static boolean isServer = false;
+
+    private final AtomicInteger threadNumber = new AtomicInteger(1);
+    public Thread newThread(Runnable r) {
+        Thread t = new Thread(r);
+        t.setName("EventBus-Thread-" + threadNumber.getAndIncrement());
+        if (t.isDaemon())
+            t.setDaemon(false);
+        if (t.getPriority() != Thread.NORM_PRIORITY)
+            t.setPriority(Thread.NORM_PRIORITY);
+        return t;
+    }
+
 
     public static ClassLoader getClassLoader() {
         return classLoader;
@@ -229,29 +246,14 @@ public class EventBus implements Loggable {
         return client.getId();
     }
 
-    private static final Random random = new Random();
-
+    public static ExecutorService getExecutorService() {
+        return executorService;
+    }
 
     public static void callIn(ThreadMode mode, Runnable runnable) {
         switch (mode) {
-            case POSTING:
-                runnable.run();
-                break;
             case ASYNC:
-                Looper myLooper = Looper.myLooper();
-                Handler asyncHandler_1 = getAsyncHandler(1);
-                Handler asyncHandler_2 = getAsyncHandler(2);
-                if (asyncHandler_1.getLooper().equals(myLooper)) {
-                    asyncHandler_2.post(runnable);
-                } else if (asyncHandler_2.getLooper().equals(myLooper)) {
-                    asyncHandler_1.post(runnable);
-                } else {
-                    if (random.nextBoolean()) {
-                        asyncHandler_1.post(runnable);
-                    } else {
-                        asyncHandler_2.post(runnable);
-                    }
-                }
+                getExecutorService().execute(runnable);
                 break;
             case MAIN:
                 mainHandler.post(runnable);

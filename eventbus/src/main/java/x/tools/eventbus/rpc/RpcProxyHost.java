@@ -7,6 +7,7 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 
 import x.tools.eventbus.Event;
@@ -21,15 +22,6 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
     public RpcProxyHost(Class<I> iface, T host) {
         this.iface = iface;
         this.host = host;
-    }
-
-    private String key;
-
-    public String getKey() {
-        if (key == null) {
-            key = iface.getName();
-        }
-        return key;
     }
 
     @Override
@@ -108,7 +100,7 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
                 try {
                     parameterTypes[i] = cl.loadClass(typeName);
                 } catch (ClassNotFoundException e) {
-                    error( e, "cannot load class: %s", typeName);
+                    error(e, "cannot load class: %s", typeName);
                     // 载入类型出错, 后续不处理
                     return true;
                 }
@@ -119,7 +111,7 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
                 this.iface.getDeclaredMethod(methodName, parameterTypes);
                 method = this.host.getClass().getDeclaredMethod(methodName, parameterTypes);
             } catch (NoSuchMethodException e) {
-                error( e, "cannot find method: %s, %s", methodName, Arrays.toString(parameterTypes));
+                error(e, "cannot find method: %s, %s", methodName, Arrays.toString(parameterTypes));
                 // 找方法出错, 后续不处理
                 return true;
             }
@@ -130,16 +122,16 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
                     parameters[i] = parameterArray.getBoolean(i);
                     continue;
                 }
-                if (ClassUtils.isAssignable(int.class, type)) {
-                    parameters[i] = parameterArray.getInt(i);
+                if (ClassUtils.isAssignable(double.class, type)) {
+                    parameters[i] = parameterArray.getDouble(i);
                     continue;
                 }
                 if (ClassUtils.isAssignable(long.class, type)) {
                     parameters[i] = parameterArray.getLong(i);
                     continue;
                 }
-                if (ClassUtils.isAssignable(double.class, type)) {
-                    parameters[i] = parameterArray.getDouble(i);
+                if (ClassUtils.isAssignable(int.class, type)) {
+                    parameters[i] = parameterArray.getInt(i);
                     continue;
                 }
                 if (ClassUtils.isAssignable(String.class, type)) {
@@ -154,11 +146,25 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
                 }
             }
 
-            try {
-                Object ret = method.invoke(host, parameters);
+            JSONObject returnObject = new JSONObject();
+            returnObject.put(RpcConstants.KEY_ID, id);
 
+            try {
+                Class retCls = method.getReturnType();
+                Object ret = method.invoke(host, parameters);
+                if (ret == null) {
+                    returnObject.put(RpcConstants.KEY_RETURN, JSONObject.NULL);
+                } else if (ClassUtils.isPrimitiveOrWrapper(retCls)) {
+                    returnObject.put(RpcConstants.KEY_RETURN, ret);
+                } else if (ret instanceof Collection || retCls.isArray()) {
+                    returnObject.put(RpcConstants.KEY_RETURN, new JSONArray(EventBus.toJson(ret)));
+                } else {
+                    returnObject.put(RpcConstants.KEY_RETURN, new JSONObject(EventBus.toJson(ret)));
+                }
             } catch (Throwable t) {
+                returnObject.put(RpcConstants.KEY_THROWABLE, new JSONObject(EventBus.toJson(t)));
             }
+            EventBus.triggerRaw(RpcConstants.EVENT_NAME_RETURN, returnObject);
         } catch (JSONException e) {
             error(e, "json format error");
         }
