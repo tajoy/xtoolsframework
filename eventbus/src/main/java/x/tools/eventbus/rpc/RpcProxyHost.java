@@ -1,5 +1,7 @@
 package x.tools.eventbus.rpc;
 
+import android.app.Application;
+
 import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -15,13 +17,21 @@ import x.tools.eventbus.EventBus;
 import x.tools.eventbus.IEventInterpolator;
 import x.tools.eventbus.log.Loggable;
 
+import static x.tools.eventbus.EventBus.getProcessName;
+
 class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
     public final Class<I> iface;
     public final T host;
+    public final String id;
 
-    public RpcProxyHost(Class<I> iface, T host) {
+    public RpcProxyHost(Class<I> iface, T host, String id) {
         this.iface = iface;
         this.host = host;
+        this.id = id;
+    }
+
+    public static <I> String getKey(Class<I> iface, String id) {
+        return iface.getName() + "#" + id;
     }
 
     @Override
@@ -42,6 +52,7 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
     public boolean onEvent(Event event) {
         if (!event.getName().equals(RpcConstants.EVENT_NAME_CALL)) return false;
 
+
         JSONObject jsonObject;
         try {
             jsonObject = event.getData();
@@ -49,6 +60,11 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
             error(e, "unknown error");
             // 格式错误, 后续不处理
             return true;
+        }
+        try {
+            debug("on EVENT_NAME_CALL event %s", jsonObject.toString(2));
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
         String target;
         try {
@@ -58,11 +74,11 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
             // 格式错误, 后续不处理
             return true;
         }
-        if (!EventBus.getId().equals(target)) {
-            // 不是本进程的, 后续不处理
+        if (!Objects.equals(getProcessName() + "#" + id, target)) {
+            // 不是此进程此id的, 后续不处理
             return true;
         }
-        String iface = null;
+        String iface;
         try {
             iface = jsonObject.getString(RpcConstants.KEY_IFACE);
         } catch (JSONException e) {
@@ -74,7 +90,7 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
             return false;
         }
 
-        String id = null;
+        String id;
         try {
             id = jsonObject.getString(RpcConstants.KEY_ID);
         } catch (JSONException e) {
@@ -98,7 +114,7 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
             for (int i = 0; i < parameterCount; i++) {
                 String typeName = parameterTypesArray.getString(i);
                 try {
-                    parameterTypes[i] = cl.loadClass(typeName);
+                    parameterTypes[i] = ClassUtils.getClass(cl, typeName);
                 } catch (ClassNotFoundException e) {
                     error(e, "cannot load class: %s", typeName);
                     // 载入类型出错, 后续不处理
@@ -107,15 +123,13 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
             }
             Method method;
             try {
-                // test try get from iface
-                this.iface.getDeclaredMethod(methodName, parameterTypes);
-                method = this.host.getClass().getDeclaredMethod(methodName, parameterTypes);
-            } catch (NoSuchMethodException e) {
+                method = ClassUtils.getPublicMethod(this.host.getClass(), methodName, parameterTypes);
+            } catch (SecurityException | NoSuchMethodException e) {
                 error(e, "cannot find method: %s, %s", methodName, Arrays.toString(parameterTypes));
                 // 找方法出错, 后续不处理
                 return true;
             }
-            Object[] parameters = new Class[parameterCount];
+            Object[] parameters = new Object[parameterCount];
             for (int i = 0; i < parameterCount; i++) {
                 Class type = parameterTypes[i];
                 if (ClassUtils.isAssignable(boolean.class, type)) {
@@ -152,18 +166,22 @@ class RpcProxyHost<T extends I, I> implements Loggable, IEventInterpolator {
             try {
                 Class retCls = method.getReturnType();
                 Object ret = method.invoke(host, parameters);
+                Object retClsName = (ret == null) ? JSONObject.NULL : ret.getClass().getName();
+                returnObject.put(RpcConstants.KEY_RETURN_TYPE, retClsName);
                 if (ret == null) {
                     returnObject.put(RpcConstants.KEY_RETURN, JSONObject.NULL);
-                } else if (ClassUtils.isPrimitiveOrWrapper(retCls)) {
+                } else if (ClassUtils.isPrimitiveOrWrapper(retCls) || ClassUtils.isAssignable(retCls, String.class)) {
                     returnObject.put(RpcConstants.KEY_RETURN, ret);
-                } else if (ret instanceof Collection || retCls.isArray()) {
+                } else if (ret instanceof Collection || retCls.isArray() || ret.getClass().isArray()) {
                     returnObject.put(RpcConstants.KEY_RETURN, new JSONArray(EventBus.toJson(ret)));
                 } else {
                     returnObject.put(RpcConstants.KEY_RETURN, new JSONObject(EventBus.toJson(ret)));
                 }
             } catch (Throwable t) {
+                t.getStackTrace(); // fill stack trace
                 returnObject.put(RpcConstants.KEY_THROWABLE, new JSONObject(EventBus.toJson(t)));
             }
+            debug("trigger event EVENT_NAME_RETURN: %s", returnObject.toString(2));
             EventBus.triggerRaw(RpcConstants.EVENT_NAME_RETURN, returnObject);
         } catch (JSONException e) {
             error(e, "json format error");

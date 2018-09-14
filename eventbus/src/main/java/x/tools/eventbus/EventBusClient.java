@@ -216,6 +216,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
             break;
         }
         this.connecting = null;
+        debug("connecting finish!");
     }
 
     private void runSending() {

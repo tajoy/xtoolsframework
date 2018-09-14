@@ -8,20 +8,17 @@ import x.tools.eventbus.IEventInterpolator;
 
 class RpcProxy<I> implements IEventInterpolator {
     public final Class<I> iface;
-    public final String target;
+    public final String process;
+    public final String id;
 
-    public RpcProxy(Class<I> iface, String target) {
+    public RpcProxy(Class<I> iface, String process, String id) {
         this.iface = iface;
-        this.target = target;
+        this.process = process;
+        this.id = id;
     }
 
-    private String key;
-
-    public String getKey() {
-        if (key == null) {
-            key = iface.getName() + "-" + target;
-        }
-        return key;
+    public static <I> String getKey(Class<I> iface, String process, String id) {
+        return iface.getName() + "#" + process + "#" + id;
     }
 
     @Override
@@ -29,13 +26,13 @@ class RpcProxy<I> implements IEventInterpolator {
         if (this == o) return true;
         if (!(o instanceof RpcProxy)) return false;
         RpcProxy<?> proxyInfo = (RpcProxy<?>) o;
-        return Objects.equals(target, proxyInfo.target) &&
+        return Objects.equals(process, proxyInfo.process) &&
                 Objects.equals(iface, proxyInfo.iface);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(target, iface);
+        return Objects.hash(process, iface);
     }
 
     private RpcInvocationHandler invocationHandler;

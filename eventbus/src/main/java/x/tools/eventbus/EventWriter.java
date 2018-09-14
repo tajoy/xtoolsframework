@@ -1,11 +1,14 @@
 package x.tools.eventbus;
 
 import java.io.IOException;
+import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class EventWriter {
+import x.tools.eventbus.log.Loggable;
+
+public class EventWriter implements Loggable {
     private final AtomicReference<OutputStream> outputStream = new AtomicReference<>(null);
 
     EventWriter() {
@@ -20,6 +23,7 @@ public class EventWriter {
             do {
                 OutputStream outputStream = this.outputStream.get();
                 if (outputStream == null) {
+                    debug("outputStream == null, wait 100ms");
                     Thread.sleep(100);
                     continue;
                 }
@@ -27,7 +31,14 @@ public class EventWriter {
                 try {
                     ObjectOutputStream oos = new ObjectOutputStream(outputStream);
                     oos.writeObject(event);
-                } catch (NullPointerException | IOException e) {
+                } catch (NotSerializableException e) {
+                    error(e, "error when writeObject: %s", event);
+                } catch (IOException e) {
+                    error(e, "error when writeObject: %s", event);
+                    try {
+                        outputStream.close();
+                    } catch (IOException ignore) {
+                    }
                     this.outputStream.set(null);
                     Thread.sleep(1000);
                     continue;

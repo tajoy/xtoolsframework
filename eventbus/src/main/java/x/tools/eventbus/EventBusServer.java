@@ -7,6 +7,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Set;
 
 import x.tools.eventbus.log.Loggable;
@@ -71,9 +72,11 @@ public class EventBusServer implements Closeable, Loggable {
         private final LocalSocket socket;
         private EventReader eventReader;
         private EventWriter eventWriter;
+        private int pid;
 
         private ClientHandler(LocalSocket socket) throws IOException {
             this.socket = socket;
+            this.pid = socket.getPeerCredentials().getPid();
             this.eventReader = new EventReader();
             this.eventWriter = new EventWriter();
             this.eventReader.setInputStream(socket.getInputStream());
@@ -84,6 +87,19 @@ public class EventBusServer implements Closeable, Loggable {
             );
             this.setDaemon(true);
             this.start();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ClientHandler)) return false;
+            ClientHandler that = (ClientHandler) o;
+            return pid == that.pid;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(pid);
         }
 
         @Override

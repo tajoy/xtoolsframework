@@ -10,8 +10,6 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import x.tools.eventbus.Event;
@@ -34,8 +32,9 @@ public class RpcInvocationHandler<I> implements InvocationHandler, Loggable, IEv
         contexts.put(context.getUUID(), context);
 
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put(RpcConstants.KEY_TARGET, rpcProxy.target);
+        jsonObject.put(RpcConstants.KEY_TARGET, rpcProxy.process + "#" + rpcProxy.id);
         jsonObject.put(RpcConstants.KEY_IFACE, rpcProxy.iface.getName());
+        jsonObject.put(RpcConstants.KEY_METHOD, method.getName());
         jsonObject.put(RpcConstants.KEY_ID, context.getUUID());
 
         JSONArray parameterTypesArray = new JSONArray();
@@ -45,23 +44,23 @@ public class RpcInvocationHandler<I> implements InvocationHandler, Loggable, IEv
         }
         jsonObject.put(RpcConstants.KEY_PARAMETER_TYPES, parameterTypesArray);
         JSONArray parameterArray = new JSONArray();
-        for (int i = 0; i < args.length; i++) {
+        for (int i = 0; args != null && i < args.length; i++) {
             Class argType = parameterTypes[i];
             Object arg = args[i];
             if (arg == null) {
                 parameterArray.put(JSONObject.NULL);
-            } else if (ClassUtils.isPrimitiveOrWrapper(argType)) {
+            } else if (ClassUtils.isPrimitiveOrWrapper(argType) || ClassUtils.isAssignable(argType, String.class)) {
                 parameterArray.put(arg);
             } else if (arg instanceof Collection || argType.isArray()) {
                 parameterArray.put(new JSONArray(EventBus.toJson(arg)));
             } else {
                 parameterArray.put(new JSONObject(EventBus.toJson(arg)));
             }
-            parameterArray.put(arg);
         }
         jsonObject.put(RpcConstants.KEY_PARAMETERS, parameterArray);
+        debug("trigger event EVENT_NAME_CALL: %s", jsonObject.toString(2));
         EventBus.triggerRaw(RpcConstants.EVENT_NAME_CALL, jsonObject);
-        if (!context.await()) throw new TimeoutException();
+        if (!context.await()) throw new RpcInvocationTimeoutException();
         if (context.getThrowable() != null) {
             throw context.getThrowable();
         }
@@ -79,6 +78,12 @@ public class RpcInvocationHandler<I> implements InvocationHandler, Loggable, IEv
             error(e, "unknown error");
             // 格式错误, 后续不处理
             return true;
+        }
+
+        try {
+            debug("on event EVENT_NAME_RETURN: %s", jsonObject.toString(2));
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
 
         String id;
@@ -106,20 +111,22 @@ public class RpcInvocationHandler<I> implements InvocationHandler, Loggable, IEv
             }
             context.setThrowable(throwable);
         } else {
-            if (jsonObject.has(RpcConstants.KEY_RETURN)) {
+                if (jsonObject.has(RpcConstants.KEY_RETURN)) {
                 try {
                     Class<?> retType = context.getReturnType();
+                    if (jsonObject.has(RpcConstants.KEY_RETURN_TYPE) && !jsonObject.isNull(RpcConstants.KEY_RETURN_TYPE)) {
+                        retType = ClassUtils.getClass(jsonObject.getString(RpcConstants.KEY_RETURN_TYPE));
+                    }
                     Object data;
                     Object object = jsonObject.get(RpcConstants.KEY_RETURN);
                     if (JSONObject.NULL.equals(object)) {
                         data = null;
                     } else if (ClassUtils.isPrimitiveOrWrapper(retType)) {
                         data = object;
-
                     } else if (object instanceof JSONObject || object instanceof JSONArray) {
                         data = EventBus.fromJson(
                                 object.toString(),
-                                context.getReturnType()
+                                retType
                         );
                     } else {
                         data = object;
