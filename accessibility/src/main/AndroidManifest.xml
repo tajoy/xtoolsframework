@@ -5,6 +5,7 @@
     <application>
         <service
             android:name=".service.ApiService"
+            android:process=":accessibility-api-service"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>

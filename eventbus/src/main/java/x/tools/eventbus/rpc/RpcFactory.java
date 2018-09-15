@@ -24,9 +24,6 @@ public class RpcFactory {
      */
     public static <T extends I, I> boolean registerProxyHost(Class<I> iface, T proxyHost, String id) {
         String key = RpcProxyHost.getKey(iface, id);
-        if (proxyHostMap.containsKey(key)) {
-            return false;
-        }
         RpcProxyHost<T, I> host = new RpcProxyHost<>(iface, proxyHost, id);
         proxyHostMap.put(key, host);
         EventBus.addInterpolator(host);

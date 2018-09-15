@@ -50,6 +50,7 @@ import x.tools.api.accessibility.WindowDetermineCallback;
 import x.tools.api.accessibility.view.ViewCondition;
 import x.tools.api.accessibility.view.ViewInfo;
 import x.tools.api.accessibility.view.ViewNodeInfo;
+import x.tools.eventbus.rpc.RpcFactory;
 import x.tools.framework.log.Loggable;
 
 import static android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;
@@ -64,7 +65,7 @@ import static x.tools.api.accessibility.TapType.ParentClick;
 import static x.tools.api.accessibility.TapType.ParentLongClick;
 import static x.tools.api.accessibility.view.ViewCondition.TextEqual;
 
-public class ApiService extends AccessibilityService implements Loggable, RootAccessibilityNodeInfoGetter {
+public class ApiService extends AccessibilityService implements Loggable, RootAccessibilityNodeInfoGetter, IApiServiceProxy {
     final static String TAG = ApiService.class.getSimpleName();
 
     static final int WAIT_PERIOD = 500;
@@ -79,17 +80,6 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     private ComponentName nowComponentName;
     private AccessibilityNodeInfo currentWindow = null;
 
-    public static ApiService getInstance() {
-        return instance;
-    }
-
-    private static ApiService instance;
-
-    public static void dumpAllUi() {
-        instance.dumpUi();
-    }
-
-
     private void delay(long mills) {
         try {
             Thread.sleep(mills);
@@ -97,83 +87,15 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         }
     }
 
-
-    public static Map<String, Object> dumpUiByName(String name) {
-        Map<String, Object> map = instance.dumpUi((File) null);
-        if (map != null) {
-            return map;
-        }
-        return null;
-    }
-
-    public Map<String, Object> dumpUi(File file) {
-        ViewNodeInfo root = getRootNodeInfo();
-        if (root == null)
-            return null;
-
-        Map<String, Object> map = new HashMap<>();
-        root = root.newCopyWithoutParent();
-        FileOutputStream fos = null;
-
-        map.put("root", root);
-        map.put("now", new Date());
-        map.put("pkg", this.pkgName);
-        map.put("now_activity", nowActivity());
-        map.put("root_view_names", rootViewNames());
-
-        if (file != null) {
-            try {
-                fos = new FileOutputStream(file.getAbsolutePath());
-                PrintStream printStream = new PrintStream(new BufferedOutputStream(fos));
-                gson.toJson(map, printStream);
-                printStream.flush();
-                printStream.close();
-                debug("save ui tree to: %s", file.getAbsolutePath());
-            } catch (Throwable throwable) {
-            } finally {
-                if (fos != null) {
-                    try {
-                        fos.close();
-                    } catch (IOException e) {
-                    }
-                }
-            }
-        }
-        return map;
-    }
-
-    public void dumpUi() {
-//        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss");
-//        Date now = new Date();
-//        File pngFile = new File(
-//                String.format(
-//                        "%s/screenshot_%s.png",
-//                        BuildConfig.LOG_PATH,
-//                        dateFormat.format(now)
-//                )
-//        );
-//        if (ImageUtils.saveImage(ScreencapUtils.screenCapture(null), pngFile)) {
-//            debug("save screenshot to: %s", pngFile.getAbsolutePath());
-//        }
-//        File uiFile = new File(
-//                String.format(
-//                        "%s/ui_tree_%s.json",
-//                        BuildConfig.LOG_PATH,
-//                        dateFormat.format(now)
-//                )
-//        );
-//        dumpUi(uiFile);
-    }
-
     @Override
     public void onCreate() {
-        instance = this;
         super.onCreate();
+        RpcFactory.registerProxyHost(IApiServiceProxy.class, this, this.getClass().getName());
     }
 
     @Override
     public void onDestroy() {
-        instance = null;
+        RpcFactory.unregisterProxyHost(IApiServiceProxy.class, this, this.getClass().getName());
         super.onDestroy();
     }
 
@@ -220,12 +142,6 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     public void onInterrupt() {
     }
 
-    private boolean isConnected = false;
-
-    public boolean isConnected() {
-        return isConnected;
-    }
-
     private final CopyOnWriteArraySet<RootSource> rootSources = new CopyOnWriteArraySet<>(
             Arrays.asList(new RootSource[]{
                     RootSource.DIRECT,
@@ -234,6 +150,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
             })
     );
 
+    @Override
     public boolean setRootSources(RootSource... sources) {
         if (sources == null || sources.length <= 0)
             return false;
@@ -323,24 +240,6 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return root;
     }
 
-
-    public boolean isBackground() {
-        ActivityManager activityManager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
-        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
-            if (appProcess.processName.equals(getApplicationContext().getPackageName())) {
-                if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND) {
-                    info("后台 %s", appProcess.processName);
-                    return true;
-                } else {
-                    info("前台 %s", appProcess.processName);
-                    return false;
-                }
-            }
-        }
-        return false;
-    }
-
     private boolean showPackageDetail(String packageName) {
         Intent intent = new Intent();
         intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
@@ -382,7 +281,6 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
 
     @Override
     protected void onServiceConnected() {
-        isConnected = true;
         AccessibilityServiceInfo info = getServiceInfo();
         info.packageNames = null; // all
         info.eventTypes = TYPES_ALL_MASK;
@@ -426,6 +324,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     private final AtomicReference<ViewNodeInfo> cacheRootViewNodeInfo = new AtomicReference<>(null);
     private final AtomicBoolean enableCache = new AtomicBoolean(true);
 
+    @Override
     public ViewNodeInfo getRootNodeInfo() {
         ViewNodeInfo root;
         if (enableCache.get()) {
@@ -444,11 +343,13 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return root;
     }
 
+    @Override
     public boolean enableRootCache() {
         enableCache.set(true);
         return true;
     }
 
+    @Override
     public boolean disableRootCache() {
         enableCache.set(false);
         cacheRootViewNodeInfo.set(null);
@@ -483,6 +384,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return true;
     }
 
+    @Override
     public ViewInfo[] searchUI(ViewCondition condition) {
         if (condition == null)
             return new ViewInfo[0];
@@ -495,6 +397,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return ret.toArray(new ViewInfo[ret.size()]);
     }
 
+    @Override
     public ViewInfo[] searchUI(ViewCondition condition, ViewNodeInfo root) {
         if (condition == null || root == null)
             return new ViewInfo[0];
@@ -507,6 +410,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return ret.toArray(new ViewInfo[ret.size()]);
     }
 
+    @Override
     public ViewInfo[] searchUI(ViewCondition condition, ViewInfo viewInfo) {
         if (condition == null || viewInfo == null)
             return new ViewInfo[0];
@@ -798,6 +702,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     }
 
 
+    @Override
     public ViewInfo fetchFirstView(ViewCondition condition) {
         ViewInfo[] views = this.searchUI(condition);
         if (views != null && views.length > 0) {
@@ -806,6 +711,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return null;
     }
 
+    @Override
     public ViewInfo fetchFirstView(ViewCondition condition, ViewInfo viewInfo) {
         ViewInfo[] views = this.searchUI(condition, viewInfo);
         if (views != null && views.length > 0) {
@@ -814,6 +720,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return null;
     }
 
+    @Override
     public boolean containView(ViewCondition condition) {
         return searchUI(condition).length > 0;
     }
@@ -827,10 +734,12 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return true;
     }
 
+    @Override
     public boolean containAllViews(ViewCondition... conditions) {
         return containAllViews(Arrays.asList(conditions));
     }
 
+    @Override
     public String[] rootViewNames() {
         List<AccessibilityWindowInfo> windowInfoList = getWindows();
         if (windowInfoList == null || windowInfoList.size() <= 0)
@@ -844,6 +753,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return names.toArray(new String[names.size()]);
     }
 
+    @Override
     public String nowActivity() {
         List<AccessibilityWindowInfo> windowInfoList = getWindows();
         if (windowInfoList == null || windowInfoList.size() <= 0)
@@ -853,6 +763,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return title == null ? "" : title.toString();
     }
 
+    @Override
     public ViewInfo[] waitUntilAppear(ViewCondition condition) {
         return _waitUntilAppear(condition, (_WaitUntilAppearCallbackRet<ViewInfo[]>) (views) -> {
             if (views != null) {
@@ -862,6 +773,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         }, WAIT_PERIOD, WAIT_TIMEOUT);
     }
 
+    @Override
     public boolean globalAction(int actionCode) {
         if (actionCode < 1 || actionCode > 7) {
             error("expect action code >= 1 and <= 7, but got %s", actionCode);
@@ -870,6 +782,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return performGlobalAction(actionCode);
     }
 
+    @Override
     public boolean gestureTap(int x, int y, int duration) {
         GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
         Path path = new Path();
@@ -883,6 +796,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return gestureTap(x, y, 50);
     }
 
+    @Override
     public boolean gestureSwipe(int x1, int y1, int x2, int y2, int duration) {
         GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
         Path path = new Path();
@@ -898,6 +812,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     }
 
 
+    @Override
     public boolean tapByResId(String resId) {
         AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
         if (root == null)
@@ -907,6 +822,11 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
             return false;
         }
         return this._tryA(nodeInfo -> this.tryTapView(nodeInfo), nodes);
+    }
+
+    @Override
+    public boolean tapExByResId(String resId, TapType... tapTypes) {
+        return tapExByResId(resId, Arrays.asList(tapTypes));
     }
 
     public boolean tapExByResId(String resId, List<TapType> tapTypes) {
@@ -920,6 +840,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return this._tryA(nodeInfo -> this.tapViewEx(nodeInfo, tapTypes.toArray(new TapType[tapTypes.size()])), nodes);
     }
 
+    @Override
     public boolean setTextByResId(String resId, String text) {
         AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
         if (root == null)
@@ -931,6 +852,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return this._tryA(nodeInfo -> this.setText(nodeInfo, text), nodes);
     }
 
+    @Override
     public boolean focusByResId(String resId) {
         AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
         if (root == null)
@@ -943,6 +865,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     }
 
 
+    @Override
     public boolean tapByText(String text) {
         AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
         if (root == null)
@@ -952,6 +875,11 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
             return false;
         }
         return this._tryA(nodeInfo -> this.tryTapView(nodeInfo), nodes);
+    }
+
+    @Override
+    public boolean tapExByText(String text, TapType... tapTypes) {
+        return tapExByText(text, Arrays.asList(tapTypes));
     }
 
     public boolean tapExByText(String text, List<TapType> tapTypes) {
@@ -965,6 +893,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return this._tryA(nodeInfo -> this.tapViewEx(nodeInfo, tapTypes.toArray(new TapType[tapTypes.size()])), nodes);
     }
 
+    @Override
     public boolean setTextByText(String textTarget, String textInput) {
         AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
         if (root == null)
@@ -976,6 +905,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return this._tryA(nodeInfo -> this.setText(nodeInfo, textInput), nodes);
     }
 
+    @Override
     public boolean focusByText(String text) {
         AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
         if (root == null)
@@ -987,6 +917,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return this._tryA(nodeInfo -> nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS), nodes);
     }
 
+    @Override
     public boolean waitTapByResId(String resId) {
         return this.waitUntil(() -> this._tryA(nodeInfo -> this.tryTapView(nodeInfo), this.waitUntil(() -> {
             AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
@@ -998,6 +929,11 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
             }
             return nodes;
         })));
+    }
+
+    @Override
+    public boolean waitTapExByResId(String resId, TapType... tapTypes) {
+        return waitTapExByResId(resId, Arrays.asList(tapTypes));
     }
 
     public boolean waitTapExByResId(String resId, List<TapType> tapTypes) {
@@ -1013,6 +949,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         })));
     }
 
+    @Override
     public boolean waitSetTextByResId(String resId, String text) {
         return this.waitUntil(() -> this._tryA(nodeInfo -> this.setText(nodeInfo, text), this.waitUntil(() -> {
             AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
@@ -1026,6 +963,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         })));
     }
 
+    @Override
     public boolean waitFocusByResId(String resId) {
         return this.waitUntil(() -> this._tryA(nodeInfo -> nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS), this.waitUntil(() -> {
             AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
@@ -1040,6 +978,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     }
 
 
+    @Override
     public boolean waitTapByText(String text) {
         return this.waitUntil(() -> this._tryA(nodeInfo -> this.tryTapView(nodeInfo), this.waitUntil(() -> {
             AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
@@ -1051,6 +990,11 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
             }
             return nodes;
         })));
+    }
+
+    @Override
+    public boolean waitTapExByText(String text, TapType... tapTypes) {
+        return waitTapExByText(text, Arrays.asList(tapTypes));
     }
 
 
@@ -1067,6 +1011,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         })));
     }
 
+    @Override
     public boolean waitSetTextByText(String textTarget, String textInput) {
         return this.waitUntil(() -> this._tryA(nodeInfo -> this.setText(nodeInfo, textInput), this.waitUntil(() -> {
             AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
@@ -1080,6 +1025,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         })));
     }
 
+    @Override
     public boolean waitFocusByText(String text) {
         return this.waitUntil(() -> this._tryA(nodeInfo -> nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS), this.waitUntil(() -> {
             AccessibilityNodeInfo root = getRootAccessibilityNodeInfo();
@@ -1093,10 +1039,16 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         })));
     }
 
+    @Override
     public boolean tap(ViewInfo viewInfo) {
         if (viewInfo == null)
             return false;
         return this.tryTapView(viewInfo);
+    }
+
+    @Override
+    public boolean tapEx(ViewInfo viewInfo, TapType... tapTypes) {
+        return tapEx(viewInfo, Arrays.asList(tapTypes));
     }
 
     public boolean tapEx(ViewInfo viewInfo, List<TapType> tapTypes) {
@@ -1105,18 +1057,21 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return this.tapViewEx(viewInfo, tapTypes);
     }
 
+    @Override
     public boolean setText(ViewInfo viewInfo, String text) {
         if (viewInfo == null)
             return false;
         return viewInfo.getAccessibilityNodeInfoRet(nodeInfo -> setText(nodeInfo, text));
     }
 
+    @Override
     public boolean focus(ViewInfo viewInfo) {
         if (viewInfo == null)
             return false;
         return viewInfo.getAccessibilityNodeInfoRet((n) -> n.performAction(AccessibilityNodeInfo.ACTION_FOCUS));
     }
 
+    @Override
     public boolean scrollTo(ViewInfo viewInfo, int row, int column) {
         if (viewInfo == null)
             return false;
@@ -1128,8 +1083,14 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         });
     }
 
+    @Override
     public boolean tryTap(ViewCondition condition) {
         return this._try((nodeInfo) -> this.tryTapView(nodeInfo), condition);
+    }
+
+    @Override
+    public boolean tryTapEx(ViewCondition condition, TapType... tapTypes) {
+        return tryTapEx(condition, Arrays.asList(tapTypes));
     }
 
     public boolean tryTapEx(ViewCondition condition, List<TapType> tapTypes) {
@@ -1169,14 +1130,17 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return true;
     }
 
+    @Override
     public boolean trySetText(ViewCondition condition, String text) {
         return this._try(nodeInfo -> this.trySetText(nodeInfo, text), condition);
     }
 
+    @Override
     public boolean tryFocus(ViewCondition condition) {
         return this._try((nodeInfo) -> nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS), condition);
     }
 
+    @Override
     public boolean tryScrollTo(ViewCondition condition, int row, int column) {
         return this._try((n) -> {
             Bundle bundle = new Bundle();
@@ -1186,6 +1150,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         }, condition);
     }
 
+    @Override
     public ViewInfo waitUi(ViewCondition condition, int timeout) {
         if (condition == null)
             return null;
@@ -1198,18 +1163,21 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         }, WAIT_PERIOD, timeout);
     }
 
+    @Override
     public ViewInfo waitUi(ViewCondition condition) {
         if (condition == null)
             return null;
         return waitUi(condition, WAIT_TIMEOUT);
     }
 
+    @Override
     public boolean waitActivity(String activity) {
         if (activity == null)
             return false;
         return waitUntil(() -> nowComponentName != null && activity.equals(nowComponentName.getClassName()), WAIT_PERIOD, WAIT_TIMEOUT);
     }
 
+    @Override
     public boolean waitActivityAndUi(String activity, ViewCondition condition) {
         if (activity == null)
             return false;
@@ -1226,6 +1194,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         }, WAIT_PERIOD, WAIT_TIMEOUT);
     }
 
+    @Override
     public String waitActivities(String ... activities) {
         if (activities == null || activities.length <= 0)
             return null;
@@ -1270,6 +1239,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         }, WAIT_PERIOD, WAIT_TIMEOUT);
     }
 
+    @Override
     public ViewInfo waitUis(ViewCondition... conditions) {
         return waitUis(Arrays.asList(conditions));
     }
@@ -1278,6 +1248,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return tapViewEx(nodeInfo, Click(), LongClick());
     }
 
+    @Override
     public boolean tapView(ViewInfo viewInfo) {
         return tapViewEx(viewInfo, Click(), LongClick());
     }
@@ -1286,6 +1257,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return tapViewEx(nodeInfo, Gesture());
     }
 
+    @Override
     public boolean tapViewByGesture(ViewInfo viewInfo) {
         return tapViewEx(viewInfo, Gesture());
     }
@@ -1294,6 +1266,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return tapViewEx(nodeInfo, ParentClick(), ParentLongClick());
     }
 
+    @Override
     public boolean tapViewByParent(ViewInfo viewInfo) {
         return tapViewEx(viewInfo, ParentClick(), ParentLongClick());
     }
@@ -1302,6 +1275,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return tapViewEx(nodeInfo, Click(), LongClick(), ParentClick(), ParentLongClick(), Gesture());
     }
 
+    @Override
     public boolean tryTapView(ViewInfo viewInfo) {
         return tapViewEx(viewInfo, Click(), LongClick(), ParentClick(), ParentLongClick(), Gesture());
     }
@@ -1386,6 +1360,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return false;
     }
 
+    @Override
     public boolean tapViewEx(ViewInfo viewInfo, TapType... tapTypes) {
         return tapViewEx(viewInfo, Arrays.asList(tapTypes));
     }
@@ -1397,6 +1372,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
     }
 
 
+    @Override
     public boolean waitTryTap(ViewCondition condition) {
         if (condition == null)
             return false;
@@ -1407,6 +1383,11 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
                 WAIT_PERIOD,
                 WAIT_TIMEOUT
         );
+    }
+
+    @Override
+    public boolean waitExTryTap(ViewCondition condition, TapType... tapTypes) {
+        return waitExTryTap(condition, Arrays.asList(tapTypes));
     }
 
     public boolean waitExTryTap(ViewCondition condition, List<TapType> tapTypes) {
@@ -1463,12 +1444,14 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
 
     }
 
+    @Override
     public boolean setTextByClipboard(ViewInfo viewInfo, String text) {
         if (viewInfo == null)
             return false;
         return viewInfo.getAccessibilityNodeInfoRet(nodeInfo -> setTextByClipboard(nodeInfo, text));
     }
 
+    @Override
     public boolean waitTrySetText(ViewCondition condition, String text) {
         if (condition == null)
             return false;
@@ -1486,6 +1469,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         );
     }
 
+    @Override
     public boolean waitTryFocus(ViewCondition condition) {
         if (condition == null)
             return false;
@@ -1498,6 +1482,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         );
     }
 
+    @Override
     public boolean waitTryScrollTo(ViewCondition condition, int row, int column) {
         if (condition == null)
             return false;
@@ -1517,6 +1502,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
 
     final private ReentrantLock lockKillApp = new ReentrantLock();
 
+    @Override
     public boolean killApp(String pkgName) {
         try {
             lockKillApp.lock();
@@ -1563,6 +1549,7 @@ public class ApiService extends AccessibilityService implements Loggable, RootAc
         return true;
     }
 
+    @Override
     public boolean startApp(String pkgName) {
         try {
             PackageManager packageManager = getApplicationContext().getPackageManager();

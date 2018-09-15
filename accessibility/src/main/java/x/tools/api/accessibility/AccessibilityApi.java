@@ -3,9 +3,7 @@ package x.tools.api.accessibility;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.pm.ComponentInfo;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 
@@ -13,9 +11,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import x.tools.api.accessibility.service.ApiService;
+import x.tools.api.accessibility.service.IApiServiceProxy;
 import x.tools.api.accessibility.view.ViewCondition;
 import x.tools.api.accessibility.view.ViewInfo;
 import x.tools.api.accessibility.view.ViewNodeInfo;
+import x.tools.eventbus.rpc.RpcFactory;
 import x.tools.framework.XContext;
 import x.tools.framework.annotation.Api;
 import x.tools.framework.annotation.PName;
@@ -44,9 +44,15 @@ public class AccessibilityApi extends AbstractApi {
         return "accessibility";
     }
 
+    private IApiServiceProxy proxy;
+
     @Override
     public boolean initialize(XContext xContext) throws XError {
         if (!super.initialize(xContext)) return false;
+        String process = xContext.getPackageName() + ":accessibility-api-service";
+        proxy = RpcFactory.getProxy(IApiServiceProxy.class, process, ApiService.class.getName());
+        if (proxy == null)
+            return false;
         return true;
     }
 
@@ -62,7 +68,7 @@ public class AccessibilityApi extends AbstractApi {
         if (!isAccessibilityRunning()) {
             return ApiStatus.NOT_RUNNING;
         }
-        if (ApiService.getInstance() == null) {
+        if (proxy == null) {
             return ApiStatus.NOT_RUNNING;
         }
         return ApiStatus.OK;
@@ -114,26 +120,22 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     RootSource... sources
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.setRootSources(sources);
+        return proxy.setRootSources(sources);
     }
 
     @Api
     public ViewNodeInfo getRootNodeInfo() {
-        ApiService service = ApiService.getInstance();
-        return service.getRootNodeInfo();
+        return proxy.getRootNodeInfo();
     }
 
     @Api
     public boolean enableRootCache() {
-        ApiService service = ApiService.getInstance();
-        return service.enableRootCache();
+        return proxy.enableRootCache();
     }
 
     @Api
     public boolean disableRootCache() {
-        ApiService service = ApiService.getInstance();
-        return service.disableRootCache();
+        return proxy.disableRootCache();
     }
 
     @Api
@@ -142,8 +144,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.searchUI(condition);
+        return proxy.searchUI(condition);
     }
 
     @Api
@@ -155,8 +156,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewNodeInfo root
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.searchUI(condition, root);
+        return proxy.searchUI(condition, root);
     }
 
     @Api
@@ -167,8 +167,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.searchUI(condition, viewInfo);
+        return proxy.searchUI(condition, viewInfo);
     }
 
     @Api
@@ -177,8 +176,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.fetchFirstView(condition);
+        return proxy.fetchFirstView(condition);
     }
 
     @Api
@@ -190,8 +188,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.fetchFirstView(condition, viewInfo);
+        return proxy.fetchFirstView(condition, viewInfo);
     }
 
     @Api
@@ -200,8 +197,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.containView(condition);
+        return proxy.containView(condition);
     }
 
     @Api
@@ -210,20 +206,17 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     ViewCondition... conditions
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.containAllViews(conditions);
+        return proxy.containAllViews(conditions);
     }
 
     @Api
     public String[] rootViewNames() {
-        ApiService service = ApiService.getInstance();
-        return service.rootViewNames();
+        return proxy.rootViewNames();
     }
 
     @Api
     public String nowActivity() {
-        ApiService service = ApiService.getInstance();
-        return service.nowActivity();
+        return proxy.nowActivity();
     }
 
     @Api
@@ -232,8 +225,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitUntilAppear(condition);
+        return proxy.waitUntilAppear(condition);
     }
 
     @Api
@@ -241,8 +233,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "actionCode")
                     int actionCode
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.globalAction(actionCode);
+        return proxy.globalAction(actionCode);
     }
 
     @Api
@@ -254,8 +245,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "duration")
                     int duration
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.gestureTap(x, y, duration);
+        return proxy.gestureTap(x, y, duration);
     }
 
     @Api
@@ -271,8 +261,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "duration")
                     int duration
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.gestureSwipe(x1, y1, x2, y2, duration);
+        return proxy.gestureSwipe(x1, y1, x2, y2, duration);
     }
 
     @Api
@@ -281,8 +270,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String resId
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapByResId(resId);
+        return proxy.tapByResId(resId);
     }
 
     @Api
@@ -294,8 +282,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapExByResId(resId, Arrays.asList(tapTypes));
+        return proxy.tapExByResId(resId, tapTypes);
     }
 
     @Api
@@ -306,8 +293,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "text")
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.setTextByResId(resId, text);
+        return proxy.setTextByResId(resId, text);
     }
 
     @Api
@@ -316,8 +302,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String resId
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.focusByResId(resId);
+        return proxy.focusByResId(resId);
     }
 
     @Api
@@ -326,8 +311,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapByText(text);
+        return proxy.tapByText(text);
     }
 
     @Api
@@ -339,8 +323,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapExByText(text, Arrays.asList(tapTypes));
+        return proxy.tapExByText(text, tapTypes);
     }
 
     @Api
@@ -352,8 +335,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String textInput
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.setTextByText(textTarget, textInput);
+        return proxy.setTextByText(textTarget, textInput);
     }
 
     @Api
@@ -362,8 +344,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.focusByText(text);
+        return proxy.focusByText(text);
     }
 
     @Api
@@ -372,8 +353,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String resId
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTapByResId(resId);
+        return proxy.waitTapByResId(resId);
     }
 
     @Api
@@ -385,8 +365,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTapExByResId(resId, Arrays.asList(tapTypes));
+        return proxy.waitTapExByResId(resId, tapTypes);
     }
 
     @Api
@@ -398,8 +377,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitSetTextByResId(resId, text);
+        return proxy.waitSetTextByResId(resId, text);
     }
 
     @Api
@@ -408,8 +386,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String resId
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitFocusByResId(resId);
+        return proxy.waitFocusByResId(resId);
     }
 
     @Api
@@ -418,8 +395,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTapByText(text);
+        return proxy.waitTapByText(text);
     }
 
     @Api
@@ -431,8 +407,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTapExByText(text, Arrays.asList(tapTypes));
+        return proxy.waitTapExByText(text, tapTypes);
     }
 
     @Api
@@ -444,8 +419,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String textInput
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitSetTextByText(textTarget, textInput);
+        return proxy.waitSetTextByText(textTarget, textInput);
     }
 
     @Api
@@ -454,8 +428,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitFocusByText(text);
+        return proxy.waitFocusByText(text);
     }
 
     @Api
@@ -464,8 +437,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tap(viewInfo);
+        return proxy.tap(viewInfo);
     }
 
     @Api
@@ -477,8 +449,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapEx(viewInfo, Arrays.asList(tapTypes));
+        return proxy.tapEx(viewInfo, tapTypes);
     }
 
     @Api
@@ -490,8 +461,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.setText(viewInfo, text);
+        return proxy.setText(viewInfo, text);
     }
 
     @Api
@@ -500,8 +470,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.focus(viewInfo);
+        return proxy.focus(viewInfo);
     }
 
     @Api
@@ -514,8 +483,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "column")
                     int column
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.scrollTo(viewInfo, row, column);
+        return proxy.scrollTo(viewInfo, row, column);
     }
 
     @Api
@@ -524,8 +492,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tryTap(condition);
+        return proxy.tryTap(condition);
     }
 
     @Api
@@ -537,8 +504,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tryTapEx(condition, Arrays.asList(tapTypes));
+        return proxy.tryTapEx(condition, tapTypes);
     }
 
     @Api
@@ -549,8 +515,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "text")
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.trySetText(condition, text);
+        return proxy.trySetText(condition, text);
     }
 
     @Api
@@ -559,8 +524,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tryFocus(condition);
+        return proxy.tryFocus(condition);
     }
 
     @Api
@@ -573,8 +537,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "column")
                     int column
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tryScrollTo(condition, row, column);
+        return proxy.tryScrollTo(condition, row, column);
     }
 
     @Api
@@ -585,8 +548,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "timeout")
                     int timeout
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitUi(condition, timeout);
+        return proxy.waitUi(condition, timeout);
     }
 
     @Api
@@ -595,8 +557,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitUi(condition);
+        return proxy.waitUi(condition);
     }
 
     @Api
@@ -605,8 +566,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String activity
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitActivity(activity);
+        return proxy.waitActivity(activity);
     }
 
     @Api
@@ -618,8 +578,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitActivityAndUi(activity, condition);
+        return proxy.waitActivityAndUi(activity, condition);
     }
 
     @Api
@@ -628,8 +587,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     String... activities
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitActivities(activities);
+        return proxy.waitActivities(activities);
     }
 
     @Api
@@ -638,8 +596,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     ViewCondition... conditions
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitUis(conditions);
+        return proxy.waitUis(conditions);
     }
 
     @Api
@@ -648,8 +605,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapView(viewInfo);
+        return proxy.tapView(viewInfo);
     }
 
     @Api
@@ -658,8 +614,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapViewByGesture(viewInfo);
+        return proxy.tapViewByGesture(viewInfo);
     }
 
     @Api
@@ -668,8 +623,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapViewByParent(viewInfo);
+        return proxy.tapViewByParent(viewInfo);
     }
 
     @Api
@@ -678,8 +632,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewInfo viewInfo
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tryTapView(viewInfo);
+        return proxy.tryTapView(viewInfo);
     }
 
     @Api
@@ -691,8 +644,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.tapViewEx(viewInfo, tapTypes);
+        return proxy.tapViewEx(viewInfo, tapTypes);
     }
 
     @Api
@@ -701,8 +653,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTryTap(condition);
+        return proxy.waitTryTap(condition);
     }
 
     @Api
@@ -714,8 +665,7 @@ public class AccessibilityApi extends AbstractApi {
             @PVarArgs
                     TapType... tapTypes
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitExTryTap(condition, Arrays.asList(tapTypes));
+        return proxy.waitExTryTap(condition, tapTypes);
     }
 
     @Api
@@ -727,8 +677,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.setTextByClipboard(viewInfo, text);
+        return proxy.setTextByClipboard(viewInfo, text);
     }
 
     @Api
@@ -740,8 +689,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String text
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTrySetText(condition, text);
+        return proxy.waitTrySetText(condition, text);
     }
 
     @Api
@@ -750,8 +698,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     ViewCondition condition
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTryFocus(condition);
+        return proxy.waitTryFocus(condition);
     }
 
     @Api
@@ -764,8 +711,7 @@ public class AccessibilityApi extends AbstractApi {
             @PName(name = "column")
                     int column
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.waitTryScrollTo(condition, row, column);
+        return proxy.waitTryScrollTo(condition, row, column);
     }
 
     @Api
@@ -774,8 +720,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String pkgName
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.killApp(pkgName);
+        return proxy.killApp(pkgName);
     }
 
     @Api
@@ -784,8 +729,7 @@ public class AccessibilityApi extends AbstractApi {
             @PNonNull
                     String pkgName
     ) {
-        ApiService service = ApiService.getInstance();
-        return service.startApp(pkgName);
+        return proxy.startApp(pkgName);
     }
 
 

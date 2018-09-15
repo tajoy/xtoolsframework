@@ -6,7 +6,7 @@
             android:name=".MockIMService"
             android:label="@string/im_name"
             android:permission="android.permission.BIND_INPUT_METHOD"
-            android:process=":im_service" >
+            android:process=":mock-ime-api-service" >
             <intent-filter>
                 <action android:name="android.view.InputMethod" />
                 <action android:name="com.bank.tools.service.SuperIMService.COMMIT_TEXT" />
