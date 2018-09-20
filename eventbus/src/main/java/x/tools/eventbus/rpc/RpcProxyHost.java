@@ -15,7 +15,7 @@ import java.util.Objects;
 import x.tools.eventbus.Event;
 import x.tools.eventbus.EventBus;
 import x.tools.eventbus.IEventInterpolator;
-import x.tools.eventbus.log.Loggable;
+import x.tools.log.Loggable;
 
 import static x.tools.eventbus.EventBus.getProcessName;
 

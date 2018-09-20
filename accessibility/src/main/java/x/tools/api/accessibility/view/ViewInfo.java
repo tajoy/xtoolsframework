@@ -1,15 +1,14 @@
 package x.tools.api.accessibility.view;
 
 import android.graphics.Rect;
-import android.support.annotation.Nullable;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import com.alipay.tools.utils.ReflectUtils;
 import com.google.gson.Gson;
 
 import java.io.Serializable;
 
 import x.tools.api.accessibility.RootAccessibilityNodeInfoGetter;
+import x.tools.framework.ReflectUtils;
 
 /**
  * Created by jacky-pro on 2018/3/27.
@@ -285,7 +284,6 @@ public class ViewInfo implements Serializable {
         return newOne;
     }
 
-    @Nullable
     public static ViewInfo create(AccessibilityNodeInfo nodeInfo, RootAccessibilityNodeInfoGetter rootNodeGetter) {
         if (nodeInfo == null) return null;
         ViewInfo viewInfo = new ViewInfo();
@@ -316,8 +314,11 @@ public class ViewInfo implements Serializable {
 
         CharSequence text = nodeInfo.getText();
         viewInfo.text = text == null ? null : text.toString();
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            CharSequence hint = nodeInfo.getHintText();
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            CharSequence hint = null;
+            try {
+                hint = (CharSequence) ReflectUtils.callMethod(nodeInfo, "getHintText");
+            } catch (Throwable ignore) {}
             viewInfo.hint = hint == null ? null : hint.toString();
         }
         CharSequence desc = nodeInfo.getContentDescription();

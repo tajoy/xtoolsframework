@@ -25,7 +25,7 @@ public class ImeApi extends AbstractApi implements IMockIMServiceProxy {
 
     @ApiConstant
     public final int EDITOR_ACTION_PREVIOUS = 0x00000007;
-    
+
     @ApiConstant
     public final int CONTEXT_MENU_ACTION_SELECT_ALL = android.R.id.selectAll;
 

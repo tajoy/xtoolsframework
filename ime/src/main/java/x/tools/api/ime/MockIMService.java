@@ -1,23 +1,15 @@
 package x.tools.api.ime;
 
-import android.content.Context;
 import android.content.Intent;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
-import android.os.Bundle;
-import android.os.Handler;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 
-import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import x.tools.eventbus.rpc.RpcFactory;
-import x.tools.framework.log.Loggable;
-
-import static android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED;
+import x.tools.log.Loggable;
 
 public class MockIMService extends InputMethodService implements KeyboardView.OnKeyboardActionListener, Loggable, IMockIMServiceProxy {
 

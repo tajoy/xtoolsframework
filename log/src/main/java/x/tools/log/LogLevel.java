@@ -1,4 +1,4 @@
-package x.tools.eventbus.log;
+package x.tools.log;
 
 public enum LogLevel implements Comparable<LogLevel> {
 

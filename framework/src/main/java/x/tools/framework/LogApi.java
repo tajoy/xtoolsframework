@@ -1,15 +1,17 @@
-package x.tools.framework.log;
+package x.tools.framework;
 
-import x.tools.framework.XContext;
 import x.tools.framework.annotation.Api;
 import x.tools.framework.annotation.ApiConstant;
 import x.tools.framework.annotation.PEnumInt;
 import x.tools.framework.annotation.PName;
 import x.tools.framework.annotation.PNonNull;
 import x.tools.framework.api.AbstractApi;
+import x.tools.log.ILogger;
+import x.tools.log.LogConfig;
+import x.tools.log.LogLevel;
 
 public class LogApi extends AbstractApi {
-    private final ILogger logger = XContext.getLoggerFactory().getLogger("script.api");
+    private final ILogger logger = LogConfig.getLoggerFactory().getLogger("script.api");
 
     @Override
     public String getNamespace() {

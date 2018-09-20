@@ -1,4 +1,4 @@
-package x.tools.framework.log;
+package x.tools.log;
 
 public interface ILoggerFactory {
     ILogger getLogger(String name);

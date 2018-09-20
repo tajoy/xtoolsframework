@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 
-import x.tools.eventbus.log.Loggable;
+import x.tools.log.Loggable;
 
 public class EventBusServer implements Closeable, Loggable {
     private LocalServerSocket serverSocket;

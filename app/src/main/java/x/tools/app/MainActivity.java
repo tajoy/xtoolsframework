@@ -14,7 +14,7 @@ import java.util.Objects;
 
 import x.tools.eventbus.rpc.RpcFactory;
 import x.tools.framework.error.XError;
-import x.tools.framework.log.Loggable;
+import x.tools.log.Loggable;
 
 import static x.tools.app.MainApplication.getXContext;
 

@@ -6,7 +6,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
 
-import x.tools.eventbus.log.Loggable;
+import x.tools.log.Loggable;
 
 public class EventWriter implements Loggable {
     private final AtomicReference<OutputStream> outputStream = new AtomicReference<>(null);
@@ -16,6 +16,10 @@ public class EventWriter implements Loggable {
 
     public void setOutputStream(OutputStream outputStream) {
         this.outputStream.set(outputStream);
+    }
+
+    public OutputStream getOutputStream() {
+        return this.outputStream.get();
     }
 
     public void writeEvent(Event event) {

@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 
+
 import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,26 +36,13 @@ import x.tools.framework.api.ApiStatus;
 import x.tools.framework.error.BuilderError;
 import x.tools.framework.error.InitializeError;
 import x.tools.framework.error.XError;
-import x.tools.framework.log.DefaultLoggerFactory;
-import x.tools.framework.log.ILoggerFactory;
-import x.tools.framework.log.LogApi;
-import x.tools.framework.log.Loggable;
 import x.tools.framework.script.IScriptEngine;
+import x.tools.log.Loggable;
 
 import static android.text.TextUtils.isEmpty;
 import static x.tools.framework.XUtils.getProcessName;
 
 public final class XContext extends ContextWrapper implements Loggable, IEventBus {
-    private static ILoggerFactory loggerFactory = new DefaultLoggerFactory();
-
-    public static ILoggerFactory getLoggerFactory() {
-        return loggerFactory;
-    }
-
-    public static void setLoggerFactory(ILoggerFactory loggerFactory) {
-        XContext.loggerFactory = loggerFactory;
-    }
-
     public static class Builder {
         private Context context;
         private final Map<String, AbstractApi> apiMap = new HashMap<>();

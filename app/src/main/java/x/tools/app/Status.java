@@ -4,7 +4,7 @@ import x.tools.eventbus.annotation.OnSyncValueUpdate;
 import x.tools.eventbus.annotation.SyncValue;
 import x.tools.eventbus.sync.AbstractSyncValue;
 import x.tools.eventbus.sync.SyncStringValue;
-import x.tools.framework.log.Loggable;
+import x.tools.log.Loggable;
 
 public class Status implements Loggable {
     private static Status INSTANCE = new Status();

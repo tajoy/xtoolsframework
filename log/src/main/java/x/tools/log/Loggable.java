@@ -1,17 +1,28 @@
-package x.tools.eventbus.log;
+package x.tools.log;
 
 import java.util.Locale;
 
-import x.tools.eventbus.EventBus;
-
 public interface Loggable {
 
+    static Loggable fromClass(Class<?> cls) {
+        return new Loggable() {
+            @Override
+            public ILogger getLogger() {
+                return LogConfig.getLoggerFactory().getLogger(cls);
+            }
+        };
+    }
+
     default ILogger getLogger() {
-        return EventBus.getLoggerFactory().getLogger(this.getClass());
+        return LogConfig.getLoggerFactory().getLogger(this.getClass());
     }
 
     default void trace(String msg) {
         getLogger().trace(msg);
+    }
+
+    default void trace(Throwable t) {
+        getLogger().trace(t);
     }
 
     default void trace(String format, Object... arguments) {
@@ -30,6 +41,10 @@ public interface Loggable {
         getLogger().debug(msg);
     }
 
+    default void debug(Throwable t) {
+        getLogger().debug(t);
+    }
+
     default void debug(String format, Object... arguments) {
         getLogger().debug(String.format(Locale.getDefault(), format, arguments));
     }
@@ -44,6 +59,10 @@ public interface Loggable {
 
     default void info(String msg) {
         getLogger().info(msg);
+    }
+
+    default void info(Throwable t) {
+        getLogger().info(t);
     }
 
     default void info(String format, Object... arguments) {
@@ -62,6 +81,10 @@ public interface Loggable {
         getLogger().warn(msg);
     }
 
+    default void warn(Throwable t) {
+        getLogger().warn(t);
+    }
+
     default void warn(String format, Object... arguments) {
         getLogger().warn(String.format(Locale.getDefault(), format, arguments));
     }
@@ -76,6 +99,10 @@ public interface Loggable {
 
     default void error(String msg) {
         getLogger().error(msg);
+    }
+
+    default void error(Throwable t) {
+        getLogger().error(t);
     }
 
     default void error(String format, Object... arguments) {

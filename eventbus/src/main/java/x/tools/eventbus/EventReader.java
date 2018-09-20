@@ -6,7 +6,7 @@ import java.io.NotSerializableException;
 import java.io.ObjectInputStream;
 import java.util.concurrent.atomic.AtomicReference;
 
-import x.tools.eventbus.log.Loggable;
+import x.tools.log.Loggable;
 
 
 public class EventReader implements Loggable {
@@ -18,6 +18,10 @@ public class EventReader implements Loggable {
 
     public void setInputStream(InputStream inputStream) {
         this.inputStream.set(inputStream);
+    }
+
+    public InputStream getInputStream() {
+        return this.inputStream.get();
     }
 
     public Event readEvent() {

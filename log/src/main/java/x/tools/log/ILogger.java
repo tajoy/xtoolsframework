@@ -1,4 +1,4 @@
-package x.tools.eventbus.log;
+package x.tools.log;
 
 import java.util.Locale;
 
@@ -12,6 +12,10 @@ public interface ILogger {
 
     default void trace(String format, Object... arguments) {
         log(LogLevel.TRACE, String.format(Locale.getDefault(), format, arguments));
+    }
+
+    default void trace(Throwable t) {
+        log(LogLevel.TRACE, t);
     }
 
     default void trace(Throwable t, String msg) {
@@ -30,6 +34,10 @@ public interface ILogger {
         log(LogLevel.DEBUG, String.format(Locale.getDefault(), format, arguments));
     }
 
+    default void debug(Throwable t) {
+        log(LogLevel.DEBUG, t);
+    }
+
     default void debug(Throwable t, String msg) {
         log(LogLevel.DEBUG, t, msg);
     }
@@ -44,6 +52,10 @@ public interface ILogger {
 
     default void info(String format, Object... arguments) {
         log(LogLevel.INFO, String.format(Locale.getDefault(), format, arguments));
+    }
+
+    default void info(Throwable t) {
+        log(LogLevel.INFO, t);
     }
 
     default void info(Throwable t, String msg) {
@@ -62,6 +74,10 @@ public interface ILogger {
         log(LogLevel.WARN, String.format(Locale.getDefault(), format, arguments));
     }
 
+    default void warn(Throwable t) {
+        log(LogLevel.WARN, t);
+    }
+
     default void warn(Throwable t, String msg) {
         log(LogLevel.WARN, t, msg);
     }
@@ -78,12 +94,20 @@ public interface ILogger {
         log(LogLevel.ERROR, String.format(Locale.getDefault(), format, arguments));
     }
 
+    default void error(Throwable t) {
+        log(LogLevel.ERROR, t);
+    }
+
     default void error(Throwable t, String msg) {
         log(LogLevel.ERROR, t, msg);
     }
 
     default void error(Throwable t, String format, Object... arguments) {
         log(LogLevel.ERROR, t, String.format(Locale.getDefault(), format, arguments));
+    }
+
+    default void log(LogLevel logLevel, Throwable throwable) {
+        log(logLevel, throwable, "");
     }
 
     void log(LogLevel logLevel, String msg);

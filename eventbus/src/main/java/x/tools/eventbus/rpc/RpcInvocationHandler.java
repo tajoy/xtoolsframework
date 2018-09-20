@@ -15,7 +15,7 @@ import java.util.concurrent.TimeoutException;
 import x.tools.eventbus.Event;
 import x.tools.eventbus.EventBus;
 import x.tools.eventbus.IEventInterpolator;
-import x.tools.eventbus.log.Loggable;
+import x.tools.log.Loggable;
 
 
 public class RpcInvocationHandler<I> implements InvocationHandler, Loggable, IEventInterpolator {

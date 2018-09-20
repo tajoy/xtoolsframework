@@ -1,4 +1,4 @@
-package x.tools.eventbus.log;
+package x.tools.log;
 
 import android.util.Log;
 

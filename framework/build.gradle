@@ -34,5 +34,6 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     api 'org.apache.commons:commons-lang3:3.6'
+    api project(path: ':log')
     api project(path: ':eventbus')
 }

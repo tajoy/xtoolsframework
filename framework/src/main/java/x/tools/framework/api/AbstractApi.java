@@ -6,17 +6,14 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Vector;
 
 import x.tools.framework.R;
 import x.tools.framework.XContext;
 import x.tools.framework.annotation.Api;
 import x.tools.framework.annotation.ApiConstant;
 import x.tools.framework.error.XError;
-import x.tools.framework.log.Loggable;
+import x.tools.log.Loggable;
 
 public abstract class AbstractApi extends ContextWrapper implements Loggable, IApi {
     protected XContext xContext;

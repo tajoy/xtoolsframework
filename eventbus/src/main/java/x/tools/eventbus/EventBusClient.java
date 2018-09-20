@@ -17,7 +17,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import x.tools.eventbus.annotation.AnnotationError;
 import x.tools.eventbus.annotation.ThreadMode;
-import x.tools.eventbus.log.Loggable;
+import x.tools.log.Loggable;
 
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.synchronizedSet;
@@ -65,19 +65,19 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
         if (address != null) {
             this.address = new LocalSocketAddress(address);
             this.connecting = new Thread(this::runConnecting);
-            this.connecting.setName("connecting-thread -" + this.toString());
+            this.connecting.setName("connecting-thread-" + this.toString());
             this.connecting.setDaemon(true);
             this.connecting.start();
             this.eventReader = new EventReader();
             this.eventWriter = new EventWriter();
 
             this.receiving = new Thread(this::runReceiving);
-            this.receiving.setName("receiving-thread -" + this.toString());
+            this.receiving.setName("receiving-thread-" + this.toString());
             this.receiving.setDaemon(true);
             this.receiving.start();
 
             this.sending = new Thread(this::runSending);
-            this.sending.setName("sending-thread -" + this.toString());
+            this.sending.setName("sending-thread-" + this.toString());
             this.sending.setDaemon(true);
             this.sending.start();
         }
@@ -198,6 +198,14 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
     private void runConnecting() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                if (this.eventWriter != null && this.eventWriter.getOutputStream() != null
+                        && this.eventReader != null && this.eventReader.getInputStream() != null) {
+                    try {
+                        Thread.sleep(1000);
+                        continue;
+                    } catch (InterruptedException ignore) {
+                    }
+                }
                 LocalSocket socket = new LocalSocket();
                 debug("client connecting to: %s", this.address.getName());
                 socket.connect(this.address);
@@ -208,12 +216,10 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
             } catch (IOException ignore) {
                 try {
                     Thread.sleep(1000);
-                    continue;
                 } catch (InterruptedException ignore1) {
                     break;
                 }
             }
-            break;
         }
         this.connecting = null;
         debug("connecting finish!");

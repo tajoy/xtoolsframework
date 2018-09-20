@@ -13,7 +13,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
-import x.tools.framework.XContext;
 import x.tools.framework.annotation.Api;
 import x.tools.framework.annotation.ApiConstant;
 import x.tools.framework.annotation.PEnumInt;
@@ -23,7 +22,7 @@ import x.tools.framework.annotation.PName;
 import x.tools.framework.annotation.PNonNull;
 import x.tools.framework.annotation.PNullable;
 import x.tools.framework.api.AbstractApi;
-import x.tools.framework.log.Loggable;
+import x.tools.log.Loggable;
 
 public class ImageApi extends AbstractApi implements Loggable {
 
