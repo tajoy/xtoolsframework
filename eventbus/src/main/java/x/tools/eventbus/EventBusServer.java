@@ -104,15 +104,27 @@ public class EventBusServer implements Closeable, Loggable {
 
         @Override
         public void run() {
-            while (!isInterrupted()) {
-                try {
-                    Event event = this.eventReader.readEvent();
-                    EventBusServer.this.dispatchAll(event, this);
-                } catch (IOException e) {
-                    e.printStackTrace();
+            while (!isInterrupted() && this.eventReader.getInputStream() != null) {
+                Event event = this.eventReader.readEvent();
+                if (event != null) {
+                    try {
+                        EventBusServer.this.dispatchAll(event, this);
+                    } catch (IOException e) {
+                        error(e);
+                    }
+                } else {
+                    debug("inputStream == null, wait 1000ms");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignore) {
+                    }
                 }
             }
             EventBusServer.this.sockets.remove(this);
+            try {
+                this.socket.close();
+            } catch (IOException ignore) {
+            }
         }
 
         private void close() throws IOException {

@@ -279,7 +279,7 @@ public class EventBus implements Loggable, ThreadFactory {
             mBufferedReader.close();
             return processName;
         } catch (Exception e) {
-            return null;
+            return pidStr;
         }
     }
 

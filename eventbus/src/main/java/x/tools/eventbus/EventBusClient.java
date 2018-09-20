@@ -241,6 +241,12 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
             Event event = this.eventReader.readEvent();
             if (event != null) {
                 sendLocal(event);
+            } else {
+                debug("inputStream == null, wait 1000ms");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignore) {
+                }
             }
         }
     }

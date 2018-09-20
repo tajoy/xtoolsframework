@@ -30,9 +30,7 @@ public class EventReader implements Loggable {
             do {
                 InputStream inputStream = this.inputStream.get();
                 if (inputStream == null) {
-                    debug("inputStream == null, wait 100ms");
-                    Thread.sleep(100);
-                    continue;
+                    return null;
                 }
                 try {
                     ObjectInputStream ois = new ObjectInputStream(inputStream);
