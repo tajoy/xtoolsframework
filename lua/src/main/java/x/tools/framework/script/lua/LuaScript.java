@@ -1,6 +1,8 @@
 package x.tools.framework.script.lua;
 
 
+import android.os.Looper;
+
 import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -36,6 +38,9 @@ import x.tools.framework.script.IScriptValue;
 import x.tools.framework.script.lua.lib.LuaBaseLib;
 import x.tools.framework.script.lua.lib.LuaEventLib;
 import x.tools.framework.script.lua.lib.LuaLogLib;
+import x.tools.framework.script.lua.lib.LuaLoopLib;
+import x.tools.framework.script.lua.lib.LuaTimerLib;
+import x.tools.framework.script.lua.lib.LuaUtilLib;
 
 public class LuaScript implements IScriptEngine {
     private boolean isInited = false;
@@ -58,6 +63,9 @@ public class LuaScript implements IScriptEngine {
         globals.load(new LuajavaLib());
         globals.load(new LuaLogLib());
         globals.load(this.luaEventLib);
+        globals.load(new LuaTimerLib());
+        globals.load(new LuaUtilLib());
+        globals.load(new LuaLoopLib(this.xContext.getMainLooper()));
         LoadState.install(globals);
         LuaC.install(globals);
         return globals;
