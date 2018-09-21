@@ -75,11 +75,9 @@ public class LuaLogLib extends TwoArgFunction {
             }
             if (i > 1) sb.append('\t');
             if (arg.istable()) {
-                Object json = LuaScript.convertToJSON(arg.checktable());
-                sb.append(json.toString());
+                sb.append(LuaBaseLib.luaTableToString(tostring, arg.checktable()));
             } else {
-                LuaString s = tostring.call(arg).strvalue();
-                sb.append(s.tojstring());
+                sb.append(tostring.call(arg).strvalue().tojstring());
             }
         }
         sb.append('\n');

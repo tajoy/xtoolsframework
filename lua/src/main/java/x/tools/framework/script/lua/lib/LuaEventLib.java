@@ -30,9 +30,8 @@ public class LuaEventLib extends TwoArgFunction {
         return module;
     }
 
-    public LuaValue add(LuaValue arg1, LuaValue arg2) {
+    public LuaValue add(LuaValue arg1, LuaValue func) {
         String name = arg1.checkjstring();
-        LuaFunction func = arg2.checkfunction();
         LuaTable list;
         LuaValue v = listener_map_list.rawget(name);
         if (v == null || v.isnil() || !v.istable()) {
@@ -46,9 +45,8 @@ public class LuaEventLib extends TwoArgFunction {
         return LuaValue.TRUE;
     }
 
-    public LuaValue remove(LuaValue arg1, LuaValue arg2) {
+    public LuaValue remove(LuaValue arg1, LuaValue func) {
         String name = arg1.checkjstring();
-        LuaFunction func = arg2.checkfunction();
         LuaValue v = listener_map_list.rawget(name);
         if (v == null || v.isnil() || !v.istable()) {
             return LuaValue.FALSE;
