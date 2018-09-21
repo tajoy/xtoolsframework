@@ -33,12 +33,15 @@ import x.tools.framework.error.ScriptValueConvertError;
 import x.tools.framework.error.XError;
 import x.tools.framework.script.IScriptEngine;
 import x.tools.framework.script.IScriptValue;
+import x.tools.framework.script.lua.lib.LuaBaseLib;
+import x.tools.framework.script.lua.lib.LuaEventLib;
+import x.tools.framework.script.lua.lib.LuaLogLib;
 
 public class LuaScript implements IScriptEngine {
     private boolean isInited = false;
     private XContext xContext;
     private Globals globals;
-    private LuaEvent luaEvent;
+    private LuaEventLib luaEventLib;
 
 
     private Globals initGlobals() {
@@ -53,7 +56,8 @@ public class LuaScript implements IScriptEngine {
         globals.load(new JseIoLib());
         globals.load(new JseOsLib());
         globals.load(new LuajavaLib());
-        globals.load(this.luaEvent);
+        globals.load(new LuaLogLib());
+        globals.load(this.luaEventLib);
         LoadState.install(globals);
         LuaC.install(globals);
         return globals;
@@ -64,7 +68,7 @@ public class LuaScript implements IScriptEngine {
     public void init(XContext xContext) {
         if (isInited) return;
         this.xContext = xContext;
-        this.luaEvent = new LuaEvent(xContext);
+        this.luaEventLib = new LuaEventLib(xContext);
         this.globals = initGlobals();
         this.isInited = true;
     }
@@ -122,7 +126,7 @@ public class LuaScript implements IScriptEngine {
 
     @Override
     public void dispatchEvent(String name, JSONObject data) throws XError {
-        luaEvent.dispatch(name, data);
+        luaEventLib.dispatch(name, data);
     }
 
     public static LuaValue createLuaValue(Object value) throws ScriptValueConvertError {

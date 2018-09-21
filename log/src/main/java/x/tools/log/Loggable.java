@@ -13,6 +13,15 @@ public interface Loggable {
         };
     }
 
+    static Loggable fromName(String name) {
+        return new Loggable() {
+            @Override
+            public ILogger getLogger() {
+                return LogConfig.getLoggerFactory().getLogger(name);
+            }
+        };
+    }
+
     default ILogger getLogger() {
         return LogConfig.getLoggerFactory().getLogger(this.getClass());
     }

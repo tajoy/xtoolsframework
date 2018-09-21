@@ -1,4 +1,4 @@
-package x.tools.framework.script.lua;
+package x.tools.framework.script.lua.lib;
 
 import org.json.JSONObject;
 import org.luaj.vm2.LuaFunction;
@@ -7,16 +7,18 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.TwoArgFunction;
 
 import x.tools.framework.XContext;
+import x.tools.framework.script.lua.LuaScript;
 
-public class LuaEvent extends LuaFunction {
+public class LuaEventLib extends TwoArgFunction {
     private LuaTable module = new LuaTable();
     private LuaTable listener_map_list = new LuaTable();
     private XContext xContext;
 
-    public LuaEvent(XContext xContext) {
+    public LuaEventLib(XContext xContext) {
         this.xContext = xContext;
     }
 
+    @Override
     public LuaValue call(LuaValue modname, LuaValue env) {
         String namespace = "event";
         module.set("add", new add());
@@ -86,14 +88,14 @@ public class LuaEvent extends LuaFunction {
     public class add extends TwoArgFunction {
         @Override
         public LuaValue call(LuaValue arg1, LuaValue arg2) {
-            return LuaEvent.this.add(arg1, arg2);
+            return LuaEventLib.this.add(arg1, arg2);
         }
     }
 
     public class remove extends TwoArgFunction {
         @Override
         public LuaValue call(LuaValue arg1, LuaValue arg2) {
-            return LuaEvent.this.remove(arg1, arg2);
+            return LuaEventLib.this.remove(arg1, arg2);
         }
     }
 

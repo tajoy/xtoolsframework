@@ -65,7 +65,6 @@ public final class XContext extends ContextWrapper implements Loggable, IEventBu
 
             // default api
             api(new XApi());
-            api(new LogApi());
         }
 
         public Builder api(AbstractApi api) throws XError {
