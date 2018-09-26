@@ -27,7 +27,7 @@ public class LuaEventLib extends TwoArgFunction {
         module.set("__listener_map_list", listener_map_list);
         env.set(namespace, module);
         env.get("package").get("loaded").set(namespace, module);
-        return module;
+        return env;
     }
 
     public LuaValue add(LuaValue arg1, LuaValue func) {

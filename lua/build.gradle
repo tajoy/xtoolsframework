@@ -29,4 +29,5 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(path: ':framework')
+    implementation 'com.linkedin.dexmaker:dexmaker:2.19.1'
 }

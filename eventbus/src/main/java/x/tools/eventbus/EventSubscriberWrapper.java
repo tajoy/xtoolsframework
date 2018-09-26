@@ -164,17 +164,15 @@ class EventSubscriberWrapper implements Loggable {
                         Constructor<? extends AbstractSyncValue> constructor = fieldClass.getConstructors()[0];
                         Class dataClass = constructor.getParameterTypes()[2];
                         String id = sv.id();
-                        Object data;
-                        try {
-                            if (ClassUtils.isAssignable(dataClass, String.class)) {
-                                data = sv.value();
-                            } else {
+                        Object data = null;
+                        if (ClassUtils.isAssignable(dataClass, String.class)) {
+                            data = sv.value();
+                        } else {
+                            try {
                                 data = dataClass.getMethod("valueOf", String.class).invoke(dataClass, sv.value());
+                            } catch (Throwable ignore) {
                             }
-                        } catch (Exception e) {
-                            throw new AnnotationError(e);
                         }
-
                         if (TextUtils.isEmpty(id)) {
                             id = cls.getName() + "." + field.getName();
                         }

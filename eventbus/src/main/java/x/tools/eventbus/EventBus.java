@@ -12,7 +12,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -39,6 +41,7 @@ public class EventBus implements Loggable, ThreadFactory {
     private static Context context = null;
     private static Handler mainHandler = null;
     private static boolean isServer = false;
+    private static final Set<Object> waitToSubscribers = new HashSet<>();
 
     private final AtomicInteger threadNumber = new AtomicInteger(1);
     public Thread newThread(Runnable r) {
@@ -188,6 +191,12 @@ public class EventBus implements Loggable, ThreadFactory {
         EventBus.context = context;
         EventBus.client = new EventBusClient(address);
         EventBus.mainHandler = new Handler(context.getMainLooper());
+        synchronized (waitToSubscribers) {
+            for(Object subscriber: waitToSubscribers) {
+                client.subscribe(subscriber);
+            }
+            waitToSubscribers.clear();
+        }
         return true;
     }
 
@@ -206,8 +215,13 @@ public class EventBus implements Loggable, ThreadFactory {
     }
 
     public static void subscribe(Object subscriber) {
-        if (client == null) throw new AssertionError("client == null");
-        client.subscribe(subscriber);
+        if (client == null) {
+            synchronized (waitToSubscribers) {
+                waitToSubscribers.add(subscriber);
+            }
+        } else {
+            client.subscribe(subscriber);
+        }
     }
 
     public static void unsubscribe(Object subscriber) {

@@ -36,6 +36,7 @@ import x.tools.framework.error.XError;
 import x.tools.framework.script.IScriptEngine;
 import x.tools.framework.script.IScriptValue;
 import x.tools.framework.script.lua.lib.LuaBaseLib;
+import x.tools.framework.script.lua.lib.LuaClassProxy;
 import x.tools.framework.script.lua.lib.LuaEventLib;
 import x.tools.framework.script.lua.lib.LuaLogLib;
 import x.tools.framework.script.lua.lib.LuaLoopLib;
@@ -51,8 +52,8 @@ public class LuaScript implements IScriptEngine {
 
     private Globals initGlobals() {
         Globals globals = new Globals();
+        globals.load(new PackageLib()); // must be first called
         globals.load(new LuaBaseLib(this.xContext));
-        globals.load(new PackageLib());
         globals.load(new Bit32Lib());
         globals.load(new TableLib());
         globals.load(new StringLib());
@@ -62,7 +63,8 @@ public class LuaScript implements IScriptEngine {
         globals.load(new JseOsLib());
         globals.load(new LuajavaLib());
         globals.load(new LuaLogLib());
-        globals.load(this.luaEventLib);
+        globals.load(new LuaClassProxy(this.xContext));
+        globals.load(this.luaEventLib = new LuaEventLib(xContext));
         globals.load(new LuaTimerLib());
         globals.load(new LuaUtilLib());
         globals.load(new LuaLoopLib(this.xContext.getMainLooper()));
@@ -76,7 +78,6 @@ public class LuaScript implements IScriptEngine {
     public void init(XContext xContext) {
         if (isInited) return;
         this.xContext = xContext;
-        this.luaEventLib = new LuaEventLib(xContext);
         this.globals = initGlobals();
         this.isInited = true;
     }
@@ -156,6 +157,27 @@ public class LuaScript implements IScriptEngine {
     public static <T> T convertTo(LuaValue luaValue, Class<T> cls) throws ScriptValueConvertError {
         return (T) CoerceLuaToJava.coerce(luaValue, cls);
     }
+
+    public static Object[] convertTo(Varargs args) {
+        Object[] ret = new LuaValue[args.narg()];
+        for (int i = 1; i <= args.narg(); i++) {
+            ret[i] = CoerceLuaToJava.coerce(args.arg(i), Object.class);
+        }
+        return ret;
+    }
+
+    public static Object[] convertTo(Varargs args, Class<?>[] clsArray) {
+        Object[] ret = new LuaValue[args.narg()];
+        for (int i = 1; i <= args.narg(); i++) {
+            Class cls = Object.class;
+            if (clsArray != null && i - 1 < clsArray.length) {
+                cls = clsArray[i - 1];
+            }
+            ret[i] = CoerceLuaToJava.coerce(args.arg(i), cls);
+        }
+        return ret;
+    }
+
 
     public static LuaValue varargs2LuaValue(Varargs varargs) {
         if (varargs == null)

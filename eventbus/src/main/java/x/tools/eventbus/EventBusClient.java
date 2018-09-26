@@ -92,6 +92,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
     public void trigger(Event event) {
         sendLocal(event);
         sendRemote(event);
+        trace("trigger event: %s", event);
     }
 
     @Override
@@ -117,8 +118,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
                     EventBus.toJson(data)
             );
         }
-        sendLocal(event);
-        sendRemote(event);
+        trigger(event);
     }
 
     @Override
@@ -139,8 +139,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
                     data.toString()
             );
         }
-        sendLocal(event);
-        sendRemote(event);
+        trigger(event);
     }
 
 
@@ -241,6 +240,7 @@ public class EventBusClient implements IEventBus, Closeable, Loggable {
             Event event = this.eventReader.readEvent();
             if (event != null) {
                 sendLocal(event);
+                trace("received event: %s", event);
             } else {
                 debug("inputStream == null, wait 1000ms");
                 try {
