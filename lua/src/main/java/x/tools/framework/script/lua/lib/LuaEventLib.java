@@ -1,11 +1,13 @@
 package x.tools.framework.script.lua.lib;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.TwoArgFunction;
 
+import x.tools.eventbus.EventBus;
 import x.tools.framework.XContext;
 import x.tools.framework.script.lua.LuaScript;
 
@@ -102,8 +104,15 @@ public class LuaEventLib extends TwoArgFunction {
         public LuaValue call(LuaValue arg1, LuaValue arg2) {
             if (arg2.isnil()) {
                 xContext.trigger(arg1.checkjstring());
-            } else {
+            } else if (arg2.istable()) {
                 xContext.triggerRaw(arg1.checkjstring(), LuaScript.convertToJSONObject(arg2.checktable()));
+            } else if (arg2.istable()) {
+                Object obj = arg2.checkuserdata();
+                try {
+                    xContext.triggerRaw(arg1.checkjstring(), new JSONObject(XContext.toJson(obj)));
+                } catch (JSONException e) {
+                    LuaValue.error(e.toString());
+                }
             }
             return NIL;
         }
