@@ -161,7 +161,7 @@ public class LuaScript implements IScriptEngine {
     public static Object[] convertTo(Varargs args) {
         Object[] ret = new Object[args.narg()];
         for (int i = 1; i <= args.narg(); i++) {
-            ret[i] = CoerceLuaToJava.coerce(args.arg(i), Object.class);
+            ret[i - 1] = CoerceLuaToJava.coerce(args.arg(i), Object.class);
         }
         return ret;
     }
@@ -173,11 +173,10 @@ public class LuaScript implements IScriptEngine {
             if (clsArray != null && i - 1 < clsArray.length) {
                 cls = clsArray[i - 1];
             }
-            ret[i] = CoerceLuaToJava.coerce(args.arg(i), cls);
+            ret[i - 1] = CoerceLuaToJava.coerce(args.arg(i), cls);
         }
         return ret;
     }
-
 
     public static LuaValue varargs2LuaValue(Varargs varargs) {
         if (varargs == null)
