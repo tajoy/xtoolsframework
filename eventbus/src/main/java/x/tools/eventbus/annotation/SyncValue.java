@@ -29,7 +29,13 @@ public @interface SyncValue {
     /**
      * 用于标识初始化值的生成器
      * 初始化时将会调用数据类型的 valueOf 方法来初始化同步变量
+     * type 不为默认值时, 使用 EventBus.fromJson(value, type)来初始化
      */
     String value() default "";
+
+    /**
+     * 用于指定序列化的值的类型
+     */
+    Class<?> type() default Object.class;
 }
 

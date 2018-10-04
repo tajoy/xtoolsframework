@@ -114,6 +114,7 @@ public class LuaBaseLib extends JseBaseLib {
         if (cycle >= 0) {
             return "{ # cycle table: " + cycle + " }";
         }
+        LuaTable printed = new LuaTable();
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         LuaValue i = LuaValue.ZERO;
@@ -123,6 +124,7 @@ public class LuaBaseLib extends JseBaseLib {
             if ((i = n.arg1()).isnil())
                 break;
             LuaValue v = n.arg(2);
+            printed.set(i, TRUE);
             if (v.istable()) {
                 stack.push(table);
                 sb.append(luaTableToString(stack, tostring, v.checktable()));
@@ -141,6 +143,10 @@ public class LuaBaseLib extends JseBaseLib {
             Varargs n = table.next(k);
             if ((k = n.arg1()).isnil())
                 break;
+
+            if (!printed.get(k).isnil()) {
+                continue;
+            }
 
             LuaValue v = n.arg(2);
 

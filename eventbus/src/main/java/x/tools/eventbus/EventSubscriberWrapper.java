@@ -162,14 +162,22 @@ class EventSubscriberWrapper implements Loggable {
                             );
                         }
                         Constructor<? extends AbstractSyncValue> constructor = fieldClass.getConstructors()[0];
-                        Class dataClass = constructor.getParameterTypes()[2];
+                        Class<?>[] parameterTypes = constructor.getParameterTypes();
+                        Class dataClass = sv.type();
+                        if (Object.class.equals(dataClass) && parameterTypes.length >= 2) {
+                            dataClass = parameterTypes[2];
+                        }
                         String id = sv.id();
                         Object data = null;
                         if (ClassUtils.isAssignable(dataClass, String.class)) {
                             data = sv.value();
                         } else {
                             try {
-                                data = dataClass.getMethod("valueOf", String.class).invoke(dataClass, sv.value());
+                                if (ClassUtils.isPrimitiveOrWrapper(dataClass)) {
+                                    data = dataClass.getMethod("valueOf", String.class).invoke(dataClass, sv.value());
+                                } else {
+                                    data = EventBus.fromJson(sv.value(), dataClass);
+                                }
                             } catch (Throwable ignore) {
                             }
                         }
@@ -177,6 +185,7 @@ class EventSubscriberWrapper implements Loggable {
                             id = cls.getName() + "." + field.getName();
                         }
                         AbstractSyncValue syncValue = constructor.newInstance(eventBus, id, data);
+                        syncValue.setValueClass(dataClass);
                         field.setAccessible(true);
                         field.set(subscriber, syncValue);
                         this.syncValueMap.put(field.getName(), syncValue);
@@ -255,6 +264,11 @@ class EventSubscriberWrapper implements Loggable {
             }
         }
 
+
+        // 可能是后启动的客户端, 注册后需要立即同步最新值
+        for (AbstractSyncValue syncValue : syncValueMap.values()) {
+            syncValue.sync();
+        }
     }
 
     public synchronized void onEvent(Event event) {
@@ -265,8 +279,9 @@ class EventSubscriberWrapper implements Loggable {
         }
 
         for (AbstractSyncValue syncValue : syncValueMap.values()) {
-            // 内部会自己分发到指定线程
-            if (syncValue.onEvent(event)) return;
+            EventBus.callIn(ThreadMode.ASYNC, () -> {
+                if (syncValue.onEvent(event)) return;
+            });
         }
 
         for (SubscriberInfo info : allEventSubscriberList) {

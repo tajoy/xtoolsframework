@@ -10,9 +10,12 @@ import java.util.concurrent.TimeoutException;
 import x.tools.eventbus.Event;
 import x.tools.eventbus.EventBus;
 import x.tools.eventbus.IEventBus;
+import x.tools.eventbus.annotation.ThreadMode;
+import x.tools.log.Loggable;
 
-public abstract class AbstractSyncValue<T> {
+public abstract class AbstractSyncValue<T> implements Loggable {
     private static final String TYPE_SYNC = "sync";
+    private static final String TYPE_SYNC_SLAVE = "sync-slave";
     private static final String TYPE_CHANGED = "changed";
 
     private static final String KEY_TYPE = "type";
@@ -23,6 +26,7 @@ public abstract class AbstractSyncValue<T> {
     protected final String id;
     protected final IEventBus eventBus;
     protected Timestamp lastTimeModified = now();
+    protected Class<T> valueClass;
     protected T value;
     private ISyncUpdateCallback updateCallback = null;
 
@@ -30,6 +34,17 @@ public abstract class AbstractSyncValue<T> {
         this.eventBus = eventBus;
         this.value = value;
         this.id = id;
+        if (value != null) {
+            valueClass = (Class<T>) value.getClass();
+        }
+    }
+
+    public Class<T> getValueClass() {
+        return valueClass;
+    }
+
+    public void setValueClass(Class<T> valueClass) {
+        this.valueClass = valueClass;
     }
 
     public T getValue() {
@@ -67,7 +82,7 @@ public abstract class AbstractSyncValue<T> {
                 try {
                     this.updateCallback.onUpdate(this, oldValue, newValue);
                 } catch (Throwable t) {
-                    t.printStackTrace();
+                    error(t);
                 }
             });
         }
@@ -102,14 +117,14 @@ public abstract class AbstractSyncValue<T> {
             jsonObject.put(KEY_WHEN, now.toString());
             putValue(jsonObject, KEY_TO, value);
         } catch (JSONException e) {
-            e.printStackTrace();
+            error(e);
             return;
         }
         synchronized (this) {
             try {
                 putValue(jsonObject, KEY_FROM, this.value);
             } catch (JSONException e) {
-                e.printStackTrace();
+                error(e);
                 return;
             }
         }
@@ -162,6 +177,78 @@ public abstract class AbstractSyncValue<T> {
         }
     }
 
+    private boolean isWaitingSynced = false;
+
+    /**
+     * 主动触发同步该值, 直到同步成功
+     */
+    public void sync() {
+
+        synchronized (this) {
+            if (isWaitingSynced)
+                return;
+        }
+
+        if (!EventBus.isServer())  {
+            isWaitingSynced = true;
+        }
+
+        trySync();
+
+        if (EventBus.isServer())  {
+            return;
+        }
+
+        EventBus.callIn(ThreadMode.ASYNC, () -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                boolean tryAgain;
+                synchronized (this) {
+                    tryAgain = isWaitingSynced;
+                }
+                if (!tryAgain) break;
+                trySync();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+    }
+
+    /**
+     * 尝试主动触发同步该值, 不等待
+     */
+    public void trySync() {
+        JSONObject jsonObject = new JSONObject();
+        Timestamp now = now();
+        try {
+            jsonObject.put(KEY_TYPE, TYPE_SYNC);
+            jsonObject.put(KEY_WHEN, now.toString());
+            putValue(jsonObject, KEY_FROM, null);
+            putValue(jsonObject, KEY_TO, null);
+            this.eventBus.triggerRaw(this.id, jsonObject);
+        } catch (JSONException e) {
+            error(e);
+        }
+    }
+
+
+    private void notifySlaveUpdate(T from, T to) {
+        Timestamp now = now();
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put(KEY_TYPE, TYPE_SYNC_SLAVE);
+            jsonObject.put(KEY_WHEN, now.toString());
+            putValue(jsonObject, KEY_FROM, from);
+            putValue(jsonObject, KEY_TO, to);
+            // 通知从值同步
+            this.eventBus.triggerRaw(this.id, jsonObject);
+        } catch (JSONException e) {
+            error(e);
+        }
+    }
+
     public boolean onEvent(Event event) {
         if (!event.getName().equals(this.id)) return false;
         boolean isLocal = Objects.equals(event.getSource(), this.eventBus.getId());
@@ -178,7 +265,7 @@ public abstract class AbstractSyncValue<T> {
             to = getValue(jsonObject, KEY_TO);
             when = Timestamp.valueOf(jsonObject.getString(KEY_WHEN));
         } catch (JSONException e) {
-            e.printStackTrace();
+            error(e);
             return true;
         }
 
@@ -192,44 +279,59 @@ public abstract class AbstractSyncValue<T> {
                         this.value = to;
                     }
                     onUpdate(from, to);
+                    notifySlaveUpdate(from, to);
+                }
+                if (TYPE_SYNC.equals(type)) {
+                    synchronized (this) {
+                        from = to = this.value;
+                    }
+                    notifySlaveUpdate(from, to);
                 }
             } else {
                 if (TYPE_CHANGED.equals(type)) {
                     // 远端请求更新, 比较条件进行更新
+                    do {
+                        synchronized (this) {
+                            if (this.lastTimeModified.after(when)) {
+                                from = to = this.value;
+                                break;
+                            }
+                            if (!Objects.equals(this.value, from)) {
+                                from = to = this.value;
+                                break;
+                            }
+                            from = this.value;
+                            this.lastTimeModified = when;
+                            this.value = to;
+                        }
+                    } while(Boolean.valueOf("false"));
+                    if (!Objects.equals(from, to)) {
+                        onUpdate(from, to);
+                    }
+                    notifySlaveUpdate(from, to);
+                }
+                if (TYPE_SYNC.equals(type)) {
                     synchronized (this) {
-                        if (this.lastTimeModified.after(when)) {
-                            return true;
-                        }
-                        if (!Objects.equals(this.value, from)) {
-                            return true;
-                        }
-                        this.lastTimeModified = when;
-                        this.value = to;
+                        from = to = this.value;
                     }
-                    onUpdate(from, to);
-                    try {
-                        jsonObject = new JSONObject(jsonObject.toString());
-                        jsonObject.put(KEY_TYPE, TYPE_SYNC);
-                        // 通知从值同步
-                        this.eventBus.triggerRaw(this.id, jsonObject);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
+                    notifySlaveUpdate(from, to);
                 }
             }
-
         } else {
             // 从值, 负责同步和请求主值更新
             if (isLocal) {
                 // 本地更新, 请求到远端后决定是否更新
                 return true;
             } else {
-                // 从主值发送来的同步通知
-                synchronized (this) {
-                    this.lastTimeModified = when;
-                    this.value = to;
+                if (TYPE_SYNC_SLAVE.equals(type)) {
+                    // 从主值发送来的同步通知
+                    synchronized (this) {
+                        this.lastTimeModified = when;
+                        this.value = to;
+                        this.isWaitingSynced = false;
+                    }
+                    onUpdate(from, to);
                 }
-                onUpdate(from, to);
             }
         }
 

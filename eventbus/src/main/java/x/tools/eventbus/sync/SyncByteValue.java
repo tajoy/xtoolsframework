@@ -11,6 +11,11 @@ public class SyncByteValue extends AbstractSyncValue<Byte> {
     }
 
     @Override
+    public Class<Byte> getValueClass() {
+        return Byte.class;
+    }
+
+    @Override
     protected void putValue(JSONObject jsonObject, String key, Byte value) throws JSONException {
         if (value == null) {
             jsonObject.put(key, JSONObject.NULL);

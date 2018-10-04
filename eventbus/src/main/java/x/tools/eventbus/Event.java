@@ -104,6 +104,8 @@ public class Event implements java.io.Serializable {
     }
 
     public JSONObject getData() throws JSONException {
+        if (preload == null)
+            return null;
         return new JSONObject(preload);
     }
 

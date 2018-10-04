@@ -11,6 +11,11 @@ public class SyncFloatValue extends AbstractSyncValue<Float> {
     }
 
     @Override
+    public Class<Float> getValueClass() {
+        return Float.class;
+    }
+
+    @Override
     protected void putValue(JSONObject jsonObject, String key, Float value) throws JSONException {
         if (value == null) {
             jsonObject.put(key, JSONObject.NULL);

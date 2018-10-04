@@ -12,6 +12,12 @@ public class SyncBooleanValue extends AbstractSyncValue<Boolean> {
     }
 
     @Override
+    public Class<Boolean> getValueClass() {
+        return Boolean.class;
+    }
+
+
+    @Override
     protected void putValue(JSONObject jsonObject, String key, Boolean value) throws JSONException {
         if (value == null) {
             jsonObject.put(key, JSONObject.NULL);

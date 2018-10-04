@@ -8,13 +8,18 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LoadState;
+import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaFunction;
+import org.luaj.vm2.LuaNumber;
+import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.Bit32Lib;
 import org.luaj.vm2.lib.CoroutineLib;
+import org.luaj.vm2.lib.DebugLib;
 import org.luaj.vm2.lib.PackageLib;
 import org.luaj.vm2.lib.StringLib;
 import org.luaj.vm2.lib.TableLib;
@@ -51,9 +56,15 @@ public class LuaScript implements IScriptEngine {
 
 
     private Globals initGlobals() {
+        LuaString.s_metatable = new LuaTable();
+        LuaNumber.s_metatable = new LuaTable();
+        LuaBoolean.s_metatable = new LuaTable();
+        LuaFunction.s_metatable = new LuaTable();
+
         Globals globals = new Globals();
         globals.load(new PackageLib()); // must be first called
         globals.load(new LuaBaseLib(this.xContext));
+        globals.load(new DebugLib());
         globals.load(new Bit32Lib());
         globals.load(new TableLib());
         globals.load(new StringLib());
@@ -306,17 +317,17 @@ public class LuaScript implements IScriptEngine {
                         continue;
                     }
                     if (value.istable()) {
-                        ret.put(index, convertToJSON(value.checktable()));
+                        ret.put(index - 1, convertToJSON(value.checktable()));
                     } else {
-                        Object object = LuaScript.convertTo(value);
+                        Object object = convertTo(value);
                         if (object == null) {
                             continue;
                         }
                         Class cls = object.getClass();
                         if (ClassUtils.isPrimitiveOrWrapper(cls) || ClassUtils.isAssignable(cls, String.class)) {
-                            ret.put(index, object);
+                            ret.put(index - 1, object);
                         } else {
-                            ret.put(index, new JSONObject(XContext.toJson(object)));
+                            ret.put(index - 1, new JSONObject(XContext.toJson(object)));
                         }
                     }
                 } catch (Exception ignore) {

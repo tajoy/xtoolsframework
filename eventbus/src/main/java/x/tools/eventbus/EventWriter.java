@@ -27,9 +27,8 @@ public class EventWriter implements Loggable {
             do {
                 OutputStream outputStream = this.outputStream.get();
                 if (outputStream == null) {
-                    debug("outputStream == null, wait 100ms");
-                    Thread.sleep(100);
-                    continue;
+                    debug("outputStream == null, ignore");
+                    return;
                 }
 
                 try {

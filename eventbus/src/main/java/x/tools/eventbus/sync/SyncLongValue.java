@@ -11,6 +11,11 @@ public class SyncLongValue extends AbstractSyncValue<Long> {
     }
 
     @Override
+    public Class<Long> getValueClass() {
+        return Long.class;
+    }
+
+    @Override
     protected void putValue(JSONObject jsonObject, String key, Long value) throws JSONException {
         if (value == null) {
             jsonObject.put(key, JSONObject.NULL);
